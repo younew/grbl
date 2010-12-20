@@ -103,6 +103,22 @@ void store_setting(int parameter, double value);
 // Or bake your own like this adding any step-bits or directions you want to invert:
 // #define STEPPING_INVERT_MASK (STEP_MASK | (1<<X_DIRECTION_BIT) | (1<<Y_DIRECTION_BIT))
 
+// Defines for local controls:
+
+// Analog input where the speed compensation pot is connected
+#define SPEED_CONTROL_PIN 6
+// LED that indicates that speed compensation is off
+#define FULL_SPEED_LED_DDR DDRB
+#define FULL_SPEED_LED_PORT PORTB
+#define FULL_SPEED_LED_PIN 3
+// LED that indicates something else 
+#define SIGNAL_LED_DDR DDRB
+#define SIGNAL_LED_PORT PORTB
+#define SIGNAL_LED_PIN 4
+// Input for emergency stop button
+#define EMERGENCY_STOP_BUTTON_DDR DDRB
+#define EMERGENCY_STOP_BUTTON_PORT PORTB
+#define EMERGENCY_STOP_BUTTON_PIN 5
 
 // Some useful constants
 #define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits

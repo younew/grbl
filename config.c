@@ -43,8 +43,8 @@ void dump_settings() {
   printPgmString(PSTR(" (steps/mm y)\r\n$2 = ")); printFloat(settings.steps_per_mm[2]);
   printPgmString(PSTR(" (steps/mm z)\r\n$3 = ")); printInteger(settings.pulse_microseconds);
   printPgmString(PSTR(" (microseconds step pulse)\r\n$4 = ")); printFloat(settings.default_feed_rate);
-  printPgmString(PSTR(" (mm/sec default feed rate)\r\n$5 = ")); printFloat(settings.default_seek_rate);
-  printPgmString(PSTR(" (mm/sec default seek rate)\r\n$6 = ")); printFloat(settings.mm_per_arc_segment);
+  printPgmString(PSTR(" (mm/min default feed rate)\r\n$5 = ")); printFloat(settings.default_seek_rate);
+  printPgmString(PSTR(" (mm/min default seek rate)\r\n$6 = ")); printFloat(settings.mm_per_arc_segment);
   printPgmString(PSTR(" (mm/arc segment)\r\n$7 = ")); printInteger(settings.invert_mask); 
   printPgmString(PSTR(" (step port invert mask. binary = ")); printIntegerInBase(settings.invert_mask, 2);  
   printPgmString(PSTR(")\r\n\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));

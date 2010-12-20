@@ -26,8 +26,8 @@
 #include "motion_control.h"
 #include "gcode.h"
 #include "serial_protocol.h"
-
 #include "config.h"
+#include "controls.h"
 #include "wiring_serial.h"
 
 int main(void)
@@ -39,6 +39,7 @@ int main(void)
   spindle_init(); // initialize spindle controller
   gc_init(); // initialize gcode-parser
   sp_init(); // initialize the serial protocol
+  controls_init(); // initialize local controls
   
   DDRD |= (1<<3)|(1<<4)|(1<<5);
   

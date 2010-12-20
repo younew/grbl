@@ -29,7 +29,7 @@
 #include <util/delay.h>
 #include "nuts_bolts.h"
 #include <avr/interrupt.h>
-
+#include "controls.h"
 #include "wiring_serial.h"
 
 // Pick a suitable line-buffer size
@@ -37,7 +37,11 @@
 #define LINE_BUFFER_SIZE 40   // Atmega 328 has one full kilobyte of extra RAM!
 #else
 #define LINE_BUFFER_SIZE 10
-#endif
+#endif  
+
+uint8_t control_poll_counter = 0;
+
+uint8_t stepper_pause_flag = 0;
 
 struct Line {
   uint32_t steps_x, steps_y, steps_z;
@@ -85,7 +89,6 @@ void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
   line_buffer_head = next_buffer_head;
   // enable stepper interrupt
 	TIMSK1 |= (1<<OCIE1A);
-  
 }
 
 // This timer interrupt is executed at the rate set with config_step_timer. It pops one instruction from
@@ -98,71 +101,90 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
 #endif
 {
   if(busy){ return; } // The busy-flag is used to avoid reentering this interrupt
-  
-  PORTD |= (1<<3);
-  // Set the direction pins a cuple of nanoseconds before we step the steppers
-  STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
-  // Then pulse the stepping pins
-  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
-  // Reset step pulse reset timer so that SIG_OVERFLOW2 can reset the signal after
-  // exactly settings.pulse_microseconds microseconds.
-  TCNT2 = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND)/8);
 
-  busy = TRUE;
-  sei(); // Re enable interrupts (normally disabled while inside an interrupt handler)
-  // We re-enable interrupts in order for SIG_OVERFLOW2 to be able to be triggered 
-  // at exactly the right time even if we occasionally spend a lot of time inside this handler.
+  if(!stepper_pause_flag) {
+    //PORTD |= (1<<3);
+    // Set the direction pins a cuple of nanoseconds before we step the steppers
+    STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
+    // Then pulse the stepping pins
+    STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
+    // Reset step pulse reset timer so that SIG_OVERFLOW2 can reset the signal after
+    // exactly settings.pulse_microseconds microseconds.
+    TCNT2 = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND)/8);
+
+    busy = TRUE;
+    sei(); // Re enable interrupts (normally disabled while inside an interrupt handler)
+    // We re-enable interrupts in order for SIG_OVERFLOW2 to be able to be triggered 
+    // at exactly the right time even if we occasionally spend a lot of time inside this handler.
     
-  // If there is no current line, attempt to pop one from the buffer
-  if (current_line == NULL) {
-    PORTD &= ~(1<<4);
-    // Anything in the buffer?
-    if (line_buffer_head != line_buffer_tail) {
-      PORTD ^= (1<<5);
-      // Retrieve a new line and get ready to step it
-      current_line = &line_buffer[line_buffer_tail]; 
-      config_step_timer(current_line->rate);
-      counter_x = -(current_line->maximum_steps >> 1);
-      counter_y = counter_x;
-      counter_z = counter_x;
-      iterations = current_line->maximum_steps;
-    } else {
-      // disable this interrupt until there is something to handle
-    	TIMSK1 &= ~(1<<OCIE1A);
-      PORTD |= (1<<4);          
-    }    
-  } 
+    // If there is no current line, attempt to pop one from the buffer
+    if (current_line == NULL) {
+      // PORTD &= ~(1<<4);
+      // Anything in the buffer?
+      if (line_buffer_head != line_buffer_tail) {
+        // PORTD ^= (1<<5);
+        // Retrieve a new line and get ready to step it
+        current_line = &line_buffer[line_buffer_tail]; 
+        config_step_timer(current_line->rate);
+        counter_x = -(current_line->maximum_steps >> 1);
+        counter_y = counter_x;
+        counter_z = counter_x;
+        iterations = current_line->maximum_steps;
+      } else {
+        // disable this interrupt until there is something to handle
+      	TIMSK1 &= ~(1<<OCIE1A);
+        // PORTD |= (1<<4);          
+      }    
+    } 
 
-  if (current_line != NULL) {
-    out_bits = current_line->direction_bits;
-    counter_x += current_line->steps_x;
-    if (counter_x > 0) {
-      out_bits |= (1<<X_STEP_BIT);
-      counter_x -= current_line->maximum_steps;
-    }
-    counter_y += current_line->steps_y;
-    if (counter_y > 0) {
-      out_bits |= (1<<Y_STEP_BIT);
-      counter_y -= current_line->maximum_steps;
-    }
-    counter_z += current_line->steps_z;
-    if (counter_z > 0) {
-      out_bits |= (1<<Z_STEP_BIT);
-      counter_z -= current_line->maximum_steps;
-    }
-    // If current line is finished, reset pointer 
-    iterations -= 1;
-    if (iterations <= 0) {
-      current_line = NULL;
-      // move the line buffer tail to the next instruction
-      line_buffer_tail = (line_buffer_tail + 1) % LINE_BUFFER_SIZE;      
-    }
+    if (current_line != NULL) {
+      out_bits = current_line->direction_bits;
+      counter_x += current_line->steps_x;
+      if (counter_x > 0) {
+        out_bits |= (1<<X_STEP_BIT);
+        counter_x -= current_line->maximum_steps;
+      }
+      counter_y += current_line->steps_y;
+      if (counter_y > 0) {
+        out_bits |= (1<<Y_STEP_BIT);
+        counter_y -= current_line->maximum_steps;
+      }
+      counter_z += current_line->steps_z;
+      if (counter_z > 0) {
+        out_bits |= (1<<Z_STEP_BIT);
+        counter_z -= current_line->maximum_steps;
+      }
+      // If current line is finished, reset pointer 
+      iterations -= 1;
+      if (iterations <= 0) {
+        current_line = NULL;
+        // move the line buffer tail to the next instruction
+        line_buffer_tail = (line_buffer_tail + 1) % LINE_BUFFER_SIZE;      
+      }
+    } else {
+      out_bits = 0;
+    } 
   } else {
     out_bits = 0;
   }
+
+  // Poll controls every 256th iteration
+  if (!(control_poll_counter--)){
+    #ifdef SPEED_CONTROL_PIN
+    if(current_line != NULL) {
+      config_step_timer(current_line->rate/readSpeedControlPot());
+    }
+    #endif   
+    #ifdef EMERGENCY_STOP_BUTTON_DDR
+    if(pollEmergencyStopButton()) {
+      stepper_pause_flag = !stepper_pause_flag;
+    }
+    #endif 
+  }
+
   out_bits ^= settings.invert_mask;
   busy=FALSE;
-  PORTD &= ~(1<<3);  
+  // PORTD &= ~(1<<3);  
 }
 
 // This interrupt is set up by SIG_OUTPUT_COMPARE1A when it sets the motor port bits. It resets
@@ -260,3 +282,4 @@ void st_go_home()
 {
   // Todo: Perform the homing cycle
 }
+
