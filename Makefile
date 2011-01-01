@@ -29,7 +29,7 @@
 
 DEVICE     = atmega328p
 CLOCK      = 16000000
-PROGRAMMER = -c avrisp2 -P usb
+PROGRAMMER = -c avrisp2 -P /dev/tty.usbmodem621
 OBJECTS    = main.o motion_control.o gcode.o spindle_control.o wiring_serial.o serial_protocol.o stepper.o \
              eeprom.o config.o analog.o controls.o
 # FUSES      = -U hfuse:w:0xd9:m -U lfuse:w:0x24:m

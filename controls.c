@@ -63,7 +63,7 @@ void signalLedOff() {
 
 #ifdef EMERGENCY_STOP_BUTTON_DDR
 uint8_t pollEmergencyStopButton() {
-  if (EMERGENCY_STOP_BUTTON_PORT & (1<<EMERGENCY_STOP_BUTTON_PIN)) {
+  if ((EMERGENCY_STOP_BUTTON_PORT & (1<<EMERGENCY_STOP_BUTTON_PIN))) {
     _delay_ms(10);
     return(1);
   } else {
@@ -83,7 +83,7 @@ uint8_t pollEmergencyStopButton() {
 // Implies the size of the multiplication range
 #define SPEED_POT_MULTIPLICATION_RANGE (1023-SPEED_MULTIPLICATION_MIN)
 // Defines the multiplication at maximum multiplication (must be >= 1.0)
-#define MAX_SPEED_MULTIPLICATION 1.25
+#define MAX_SPEED_MULTIPLICATION 2
  
 // Reads the speed control pot and returns a speed multiplier
 float readSpeedControlPot() {

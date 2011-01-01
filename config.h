@@ -28,32 +28,50 @@
 #define BAUD_RATE 9600
 //#define BAUD_RATE 115200
 
-#define STEPPERS_ENABLE_DDR     DDRD
-#define STEPPERS_ENABLE_PORT    PORTD
-#define STEPPERS_ENABLE_BIT         2
+#define STEPPERS_ENABLE_DDR     DDRB
+#define STEPPERS_ENABLE_PORT    PORTB
+#define STEPPERS_ENABLE_BIT         0
 
-#define STEPPING_DDR       DDRC
-#define STEPPING_PORT      PORTC 
-#define X_STEP_BIT           0
-#define Y_STEP_BIT           1
-#define Z_STEP_BIT           2
-#define X_DIRECTION_BIT            3
-#define Y_DIRECTION_BIT            4
-#define Z_DIRECTION_BIT            5
+#define STEPPING_DDR       DDRD
+#define STEPPING_PORT      PORTD
+#define X_STEP_BIT           2
+#define Y_STEP_BIT           3
+#define Z_STEP_BIT           4
+#define X_DIRECTION_BIT      5
+#define Y_DIRECTION_BIT      6
+#define Z_DIRECTION_BIT      7
 
-#define LIMIT_DDR      DDRD
-#define LIMIT_PORT     PORTD
-#define X_LIMIT_BIT          3
-#define Y_LIMIT_BIT          4
-#define Z_LIMIT_BIT          5
+#define LIMIT_DDR      DDRB
+#define LIMIT_PORT     PORTB
+#define X_LIMIT_BIT          1
+#define Y_LIMIT_BIT          2
+#define Z_LIMIT_BIT          3
 
-#define SPINDLE_ENABLE_DDR DDRD
-#define SPINDLE_ENABLE_PORT PORTD
-#define SPINDLE_ENABLE_BIT 6
+#define SPINDLE_ENABLE_DDR DDRB
+#define SPINDLE_ENABLE_PORT PORTB
+#define SPINDLE_ENABLE_BIT 4
 
-#define SPINDLE_DIRECTION_DDR DDRD
-#define SPINDLE_DIRECTION_PORT PORTD
-#define SPINDLE_DIRECTION_BIT 7
+#define SPINDLE_DIRECTION_DDR DDRB
+#define SPINDLE_DIRECTION_PORT PORTB
+#define SPINDLE_DIRECTION_BIT 5
+
+
+// Defines for local controls:
+
+// Analog input where the speed compensation pot is connected
+#define SPEED_CONTROL_PIN 0
+// LED that indicates that speed compensation is off
+#define FULL_SPEED_LED_DDR DDRB
+#define FULL_SPEED_LED_PORT PORTB
+#define FULL_SPEED_LED_PIN 4
+// LED that indicates something else 
+#define SIGNAL_LED_DDR DDRB
+#define SIGNAL_LED_PORT PORTB
+#define SIGNAL_LED_PIN 5
+// Input for emergency stop button
+// #define EMERGENCY_STOP_BUTTON_DDR DDRB
+// #define EMERGENCY_STOP_BUTTON_PORT PORTB
+// #define EMERGENCY_STOP_BUTTON_PIN 5
 
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
@@ -102,23 +120,6 @@ void store_setting(int parameter, double value);
 // #define STEPPING_INVERT_MASK (STEPPING_MASK)
 // Or bake your own like this adding any step-bits or directions you want to invert:
 // #define STEPPING_INVERT_MASK (STEP_MASK | (1<<X_DIRECTION_BIT) | (1<<Y_DIRECTION_BIT))
-
-// Defines for local controls:
-
-// Analog input where the speed compensation pot is connected
-#define SPEED_CONTROL_PIN 6
-// LED that indicates that speed compensation is off
-#define FULL_SPEED_LED_DDR DDRB
-#define FULL_SPEED_LED_PORT PORTB
-#define FULL_SPEED_LED_PIN 3
-// LED that indicates something else 
-#define SIGNAL_LED_DDR DDRB
-#define SIGNAL_LED_PORT PORTB
-#define SIGNAL_LED_PIN 4
-// Input for emergency stop button
-#define EMERGENCY_STOP_BUTTON_DDR DDRB
-#define EMERGENCY_STOP_BUTTON_PORT PORTB
-#define EMERGENCY_STOP_BUTTON_PIN 5
 
 // Some useful constants
 #define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
