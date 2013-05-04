@@ -22,7 +22,7 @@
 #ifndef stepper_h
 #define stepper_h 
 
-#include <avr/io.h>
+//#include <avr/io.h>
 
 // Initialize and setup the stepper motor subsystem
 void st_init();

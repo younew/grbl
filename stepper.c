@@ -22,7 +22,7 @@
 /* The timer calculations of this module informed by the 'RepRap cartesian firmware' by Zack Smith
    and Philipp Tiefenbacher. */
 
-#include <avr/interrupt.h>
+//#include <avr/interrupt.h>
 #include "stepper.h"
 #include "config.h"
 #include "settings.h"

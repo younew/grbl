@@ -26,7 +26,7 @@
   methods to accomodate their needs.
 */
 
-#include <avr/pgmspace.h>
+//#include <avr/pgmspace.h>
 #include "report.h"
 #include "print.h"
 #include "settings.h"

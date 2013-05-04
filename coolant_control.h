@@ -21,7 +21,7 @@
 #ifndef coolant_control_h
 #define coolant_control_h 
 
-#include <avr/io.h>
+//#include <avr/io.h>
 
 #define COOLANT_MIST_ENABLE 2
 #define COOLANT_FLOOD_ENABLE 1

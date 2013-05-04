@@ -22,7 +22,7 @@
 /* This code was initially inspired by the wiring_serial module by David A. Mellis which
    used to be a part of the Arduino project. */ 
 
-#include <avr/interrupt.h>
+//#include <avr/interrupt.h>
 #include "serial.h"
 #include "config.h"
 #include "motion_control.h"

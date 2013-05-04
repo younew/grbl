@@ -23,7 +23,7 @@
    used to be a part of the Arduino project. */ 
 
 
-#include <avr/pgmspace.h>
+//#include <avr/pgmspace.h>
 #include "config.h"
 #include "serial.h"
 #include "settings.h"
