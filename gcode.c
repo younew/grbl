@@ -80,6 +80,7 @@ static float to_millimeters(float value)
 // characters and signed floating point values (no whitespace). Comments and block delete
 // characters have been removed. All units and positions are converted and exported to grbl's
 // internal functions in terms of (mm, mm/min) and absolute machine coordinates, respectively.
+//执行一行G代码
 uint8_t gc_execute_line(char *line) 
 {
 
@@ -109,7 +110,7 @@ uint8_t gc_execute_line(char *line)
      NOTE: Modal group numbers are defined in Table 4 of NIST RS274-NGC v3, pg.20 */
   uint8_t group_number = MODAL_GROUP_NONE;
   while(next_statement(&letter, &value, line, &char_counter)) {
-    int_value = trunc(value);
+    int_value = trunc(value);//将数字截尾取整
     switch(letter) {
       case 'G':
         // Set modal group values
@@ -130,7 +131,7 @@ uint8_t gc_execute_line(char *line)
           case 3: gc.motion_mode = MOTION_MODE_CCW_ARC; break;
           case 4: non_modal_action = NON_MODAL_DWELL; break;
           case 10: non_modal_action = NON_MODAL_SET_COORDINATE_DATA; break;
-          case 17: select_plane(X_AXIS, Y_AXIS, Z_AXIS); break;
+          case 17: select_plane(X_AXIS, Y_AXIS, Z_AXIS); break;//平面
           case 18: select_plane(X_AXIS, Z_AXIS, Y_AXIS); break;
           case 19: select_plane(Y_AXIS, Z_AXIS, X_AXIS); break;
           case 20: gc.inches_mode = true; break;
@@ -139,7 +140,7 @@ uint8_t gc_execute_line(char *line)
             int_value = trunc(10*value); // Multiply by 10 to pick up Gxx.1
             switch(int_value) {
               case 280: non_modal_action = NON_MODAL_GO_HOME_0; break;
-              case 281: non_modal_action = NON_MODAL_SET_HOME_0; break;
+              case 281: non_modal_action = NON_MODAL_SET_HOME_0; break;//G28.2
               case 300: non_modal_action = NON_MODAL_GO_HOME_1; break;
               case 301: non_modal_action = NON_MODAL_SET_HOME_1; break;
               default: FAIL(STATUS_UNSUPPORTED_STATEMENT);
@@ -214,7 +215,7 @@ uint8_t gc_execute_line(char *line)
       case 'F': 
         if (value <= 0) { FAIL(STATUS_INVALID_STATEMENT); } // Must be greater than zero
         if (gc.inverse_feed_rate_mode) {
-          inverse_feed_rate = to_millimeters(value); // seconds per motion for this motion only
+          inverse_feed_rate = to_millimeters(value); // seconds per motion for this motion only//倒
         } else {          
           gc.feed_rate = to_millimeters(value); // millimeters per minute
         }
@@ -240,6 +241,7 @@ uint8_t gc_execute_line(char *line)
   }
   
   // If there were any errors parsing this line, we will return right away with the bad news
+  //如果前面两步解析有错误，立即返回错误代码。
   if (gc.status_code) { return(gc.status_code); }
   
   
@@ -386,6 +388,7 @@ uint8_t gc_execute_line(char *line)
     // Convert all target position data to machine coordinates for executing motion. Apply
     // absolute mode coordinate offsets or incremental mode offsets.
     // NOTE: Tool offsets may be appended to these conversions when/if this feature is added.
+    //位置数据转换为机器坐标
     uint8_t i;
     for (i=0; i<=2; i++) { // Axes indices are consistent, so loop may be used to save flash space.
       if ( bit_istrue(axis_words,bit(i)) ) {
@@ -400,7 +403,7 @@ uint8_t gc_execute_line(char *line)
         target[i] = gc.position[i]; // No axis word in block. Keep same axis position.
       }
     }
-  
+    //执行运动指令,如G0,G1,G2等
     switch (gc.motion_mode) {
       case MOTION_MODE_CANCEL: 
         if (axis_words) { FAIL(STATUS_INVALID_STATEMENT); } // No axis words allowed while active.

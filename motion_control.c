@@ -43,6 +43,8 @@
 // segments, must pass through this routine before being passed to the planner. The seperation of
 // mc_line and plan_buffer_line is done primarily to make backlash compensation integration simple
 // and direct.
+//所有的直线运动包括圆弧的线段，都必须通过这个函数，才能
+//到达grbl planner
 // TODO: Check for a better way to avoid having to push the arguments twice for non-backlash cases.
 // However, this keeps the memory requirements lower since it doesn't have to call and hold two 
 // plan_buffer_lines in memory. Grbl only has to retain the original line input variables during a
@@ -65,6 +67,7 @@ void mc_line(float x, float y, float z, float feed_rate, uint8_t invert_feed_rat
 
   // If the buffer is full: good! That means we are well ahead of the robot. 
   // Remain in this loop until there is room in the buffer.
+  //如果缓存区已满，则在此等待直到有空间
   do {
     protocol_execute_runtime(); // Check for any run-time commands
     if (sys.abort) { return; } // Bail, if system abort.
@@ -73,6 +76,7 @@ void mc_line(float x, float y, float z, float feed_rate, uint8_t invert_feed_rat
   
   // If idle, indicate to the system there is now a planned block in the buffer ready to cycle 
   // start. Otherwise ignore and continue on.
+  // 如果处于空闲态，则指示系统缓存区已有数据，可以工作了
   if (!sys.state) { sys.state = STATE_QUEUED; }
   
   // Auto-cycle start immediately after planner finishes. Enabled/disabled by grbl settings. During 
@@ -83,7 +87,7 @@ void mc_line(float x, float y, float z, float feed_rate, uint8_t invert_feed_rat
   // when the buffer is completely full and primed; auto-starting, if there was only one g-code 
   // command sent during manual operation; or if a system is prone to buffer starvation, auto-start
   // helps make sure it minimizes any dwelling/motion hiccups and keeps the cycle going. 
-  if (sys.auto_start) { st_cycle_start(); }
+  if (sys.auto_start) { st_cycle_start(); }//启动步进中断，执行队列
 }
 
 

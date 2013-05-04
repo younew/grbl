@@ -112,6 +112,7 @@ void protocol_execute_runtime()
       sys.state = STATE_ALARM; // Set system alarm state
 
       // Critical event. Only hard limit qualifies. Update this as new critical events surface.
+      //严重事件，硬件限位。报告状态，进入死循环，直到复位
       if (rt_exec & EXEC_CRIT_EVENT) {
         report_alarm_message(ALARM_HARD_LIMIT); 
         report_feedback_message(MESSAGE_CRITICAL_EVENT);
@@ -123,6 +124,7 @@ void protocol_execute_runtime()
         } while (bit_isfalse(sys.execute,EXEC_RESET));
 
       // Standard alarm event. Only abort during motion qualifies.
+      //标准警告事件
       } else {
         // Runtime abort command issued during a cycle, feed hold, or homing cycle. Message the
         // user that position may have been lost and set alarm state to enable the alarm lockout
@@ -132,7 +134,7 @@ void protocol_execute_runtime()
       bit_false(sys.execute,(EXEC_ALARM | EXEC_CRIT_EVENT));
     } 
   
-    // Execute system abort. 
+    // Execute system abort. 终止
     if (rt_exec & EXEC_RESET) {
       sys.abort = true;  // Only place this is set true.
       return; // Nothing else to do but exit.
@@ -313,7 +315,7 @@ void protocol_process()
     
     } else {
       if (iscomment) {
-        // Throw away all comment characters
+        // Throw away all comment characters 忽略( )之间的字符
         if (c == ')') {
           // End of comment. Resume line.
           iscomment = false;

@@ -1,0 +1,8 @@
+---- max_entry_speed Æ¥Åä (7 in 2 ÎÄ¼þ) ----
+Planner.c:    if (current->entry_speed != current->max_entry_speed) {
+Planner.c:      if ((!current->nominal_length_flag) && (current->max_entry_speed > next->entry_speed)) {
+Planner.c:        current->entry_speed = min( current->max_entry_speed,
+Planner.c:        current->entry_speed = current->max_entry_speed;
+Planner.c:  block->max_entry_speed = vmax_junction;
+Planner.c:  block->max_entry_speed = 0.0;
+Planner.h:  float max_entry_speed;             // Maximum allowable junction entry speed in mm/min
