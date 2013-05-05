@@ -37,15 +37,109 @@
 
 void limits_init() 
 {
-  LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins
-  LIMIT_PORT |= (LIMIT_MASK); // Enable internal pull-up resistors. Normal high operation.
+  GPIO_InitTypeDef GPIO_InitStructure;
+  EXTI_InitTypeDef EXTI_InitStructure;
+  NVIC_InitTypeDef NVIC_InitStructure;
+
+  GPIO_InitStructure.GPIO_Pin = LIMITxn_PIN;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_Init(LIMITxn_PORT, &GPIO_InitStructure);
+
+  GPIO_InitStructure.GPIO_Pin = LIMITx_PIN;
+  GPIO_Init(LIMITx_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_Pin = LIMITxo_PIN;
+  GPIO_Init(LIMITxo_PORT, &GPIO_InitStructure);
+  
+  GPIO_InitStructure.GPIO_Pin = LIMITy_PIN;
+  GPIO_Init(LIMITy_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_Pin = LIMITyo_PIN;
+  GPIO_Init(LIMITyo_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_Pin = LIMITyn_PIN;
+  GPIO_Init(LIMITyn_PORT, &GPIO_InitStructure);
+  
+  GPIO_InitStructure.GPIO_Pin = LIMITz_PIN;
+  GPIO_Init(LIMITz_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_Pin = LIMITzo_PIN;
+  GPIO_Init(LIMITzo_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_Pin = LIMITzn_PIN;
+  GPIO_Init(LIMITzn_PORT, &GPIO_InitStructure);
+  
+  SYSCFG_EXTILineConfig(LIMITxn_PORT_SOURCE, LIMITxn_PIN_SOURCE);
+  
+  EXTI_InitStructure.EXTI_Line = LIMITxn_EXTI_LINE;
+  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;//  EXTI_Trigger_Falling 
   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
-    LIMIT_PCMSK |= LIMIT_MASK; // Enable specific pins of the Pin Change Interrupt
-    PCICR |= (1 << LIMIT_INT); // Enable Pin Change Interrupt
-  } else {
-    LIMIT_PCMSK &= ~LIMIT_MASK; // Disable
-    PCICR &= ~(1 << LIMIT_INT); 
-  }
+  	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+  else
+  	EXTI_InitStructure.EXTI_LineCmd = DISABLE;
+  EXTI_Init(&EXTI_InitStructure);
+  
+  SYSCFG_EXTILineConfig(LIMITx_PORT_SOURCE, LIMITx_PIN_SOURCE);
+  EXTI_InitStructure.EXTI_Line = LIMITx_EXTI_LINE;
+  EXTI_Init(&EXTI_InitStructure);
+  SYSCFG_EXTILineConfig(LIMITxo_PORT_SOURCE, LIMITxo_PIN_SOURCE);
+  EXTI_InitStructure.EXTI_Line = LIMITxo_EXTI_LINE;
+  EXTI_Init(&EXTI_InitStructure);
+  
+  SYSCFG_EXTILineConfig(LIMITy_PORT_SOURCE, LIMITy_PIN_SOURCE);
+  EXTI_InitStructure.EXTI_Line = LIMITy_EXTI_LINE;
+  EXTI_Init(&EXTI_InitStructure);
+  SYSCFG_EXTILineConfig(LIMITyo_PORT_SOURCE, LIMITyo_PIN_SOURCE);
+  EXTI_InitStructure.EXTI_Line = LIMITyo_EXTI_LINE;
+  EXTI_Init(&EXTI_InitStructure);
+  SYSCFG_EXTILineConfig(LIMITyn_PORT_SOURCE, LIMITyn_PIN_SOURCE);
+  EXTI_InitStructure.EXTI_Line = LIMITyn_EXTI_LINE;
+  EXTI_Init(&EXTI_InitStructure);
+  
+  SYSCFG_EXTILineConfig(LIMITz_PORT_SOURCE, LIMITz_PIN_SOURCE);
+  EXTI_InitStructure.EXTI_Line = LIMITz_EXTI_LINE;
+  EXTI_Init(&EXTI_InitStructure);
+  SYSCFG_EXTILineConfig(LIMITzo_PORT_SOURCE, LIMITzo_PIN_SOURCE);
+  EXTI_InitStructure.EXTI_Line = LIMITzo_EXTI_LINE;
+  EXTI_Init(&EXTI_InitStructure);
+  SYSCFG_EXTILineConfig(LIMITzn_PORT_SOURCE, LIMITzn_PIN_SOURCE);
+  EXTI_InitStructure.EXTI_Line = LIMITzn_EXTI_LINE;
+  EXTI_Init(&EXTI_InitStructure);
+
+  EXTI_ClearITPendingBit(LIMITx_EXTI_LINE);
+  EXTI_ClearITPendingBit(LIMITxn_EXTI_LINE);
+  EXTI_ClearITPendingBit(LIMITxo_EXTI_LINE);
+  
+  EXTI_ClearITPendingBit(LIMITy_EXTI_LINE);
+  EXTI_ClearITPendingBit(LIMITyn_EXTI_LINE);
+  EXTI_ClearITPendingBit(LIMITyo_EXTI_LINE);
+  
+  EXTI_ClearITPendingBit(LIMITz_EXTI_LINE);
+  EXTI_ClearITPendingBit(LIMITzn_EXTI_LINE);
+  EXTI_ClearITPendingBit(LIMITzo_EXTI_LINE);
+  
+  NVIC_InitStructure.NVIC_IRQChannel = LIMITxn_LINK_EXTI_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x03;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure); 
+
+  NVIC_InitStructure.NVIC_IRQChannel = LIMITx_LINK_EXTI_IRQn;
+  NVIC_Init(&NVIC_InitStructure); 
+  NVIC_InitStructure.NVIC_IRQChannel = LIMITxo_LINK_EXTI_IRQn;
+  NVIC_Init(&NVIC_InitStructure); 
+  
+  NVIC_InitStructure.NVIC_IRQChannel = LIMITy_LINK_EXTI_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
+  NVIC_Init(&NVIC_InitStructure); 
+  NVIC_InitStructure.NVIC_IRQChannel = LIMITyo_LINK_EXTI_IRQn;
+  NVIC_Init(&NVIC_InitStructure); 
+  NVIC_InitStructure.NVIC_IRQChannel = LIMITyn_LINK_EXTI_IRQn;
+  NVIC_Init(&NVIC_InitStructure); 
+  NVIC_InitStructure.NVIC_IRQChannel = LIMITz_LINK_EXTI_IRQn;
+  NVIC_Init(&NVIC_InitStructure); 
+  NVIC_InitStructure.NVIC_IRQChannel = LIMITyo_LINK_EXTI_IRQn;
+  NVIC_Init(&NVIC_InitStructure); 
+  NVIC_InitStructure.NVIC_IRQChannel = LIMITyn_LINK_EXTI_IRQn;
+  NVIC_Init(&NVIC_InitStructure); 
 }
 
 // This is the Limit Pin Change Interrupt, which handles the hard limit feature. A bouncing 
@@ -57,7 +151,8 @@ void limits_init()
 // homing cycles and will not respond correctly. Upon user request or need, there may be a
 // special pinout for an e-stop, but it is generally recommended to just directly connect
 // your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
-ISR(LIMIT_INT_vect) 
+//ISR(LIMIT_INT_vect) 
+void LimitISR(void)
 {
   // TODO: This interrupt may be used to manage the homing cycle directly with the main stepper
   // interrupt without adding too much to it. All it would need is some way to stop one axis 

@@ -29,20 +29,28 @@ static uint8_t current_coolant_mode;
 
 void coolant_init()
 {
+  GPIO_InitTypeDef  GPIO_InitStructure;
+  
   current_coolant_mode = COOLANT_DISABLE;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_25MHz;
   #if ENABLE_M7
-    COOLANT_MIST_DDR |= (1 << COOLANT_MIST_BIT);
+  	GPIO_InitStructure.GPIO_Pin = COOLANT_MIST_BIT |COOLANT_FLOOD_BIT;
+  	GPIO_Init(COOLANT_MIST_PORT, &GPIO_InitStructure);
   #endif
-  COOLANT_FLOOD_DDR |= (1 << COOLANT_FLOOD_BIT);
+  GPIO_InitStructure.GPIO_Pin = COOLANT_FLOOD_BIT;
+  GPIO_Init(COOLANT_FLOOD_PORT, &GPIO_InitStructure);
   coolant_stop();
 }
 
 void coolant_stop()
 {
   #ifdef ENABLE_M7
-    COOLANT_MIST_PORT &= ~(1 << COOLANT_MIST_BIT);
+    COOLANT_MIST_STOP;//COOLANT_MIST_PORT &= ~(1 << COOLANT_MIST_BIT);
   #endif
-  COOLANT_FLOOD_PORT &= ~(1 << COOLANT_FLOOD_BIT);
+  COOLANT_FLOOD_STOP;//COOLANT_FLOOD_PORT &= ~(1 << COOLANT_FLOOD_BIT);
 }
 
 
@@ -52,10 +60,10 @@ void coolant_run(uint8_t mode)
   { 
     plan_synchronize(); // Ensure coolant turns on when specified in program.
     if (mode == COOLANT_FLOOD_ENABLE) { 
-      COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
+      COOLANT_FLOOD_RUN;//COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
     #ifdef ENABLE_M7  
       } else if (mode == COOLANT_MIST_ENABLE) {
-          COOLANT_MIST_PORT |= (1 << COOLANT_MIST_BIT);
+          COOLANT_MIST_RUN;//COOLANT_MIST_PORT |= (1 << COOLANT_MIST_BIT);
     #endif
     } else {
       coolant_stop();

@@ -23,6 +23,11 @@
 #define spindle_control_h 
 
 //#include <avr/io.h>
+#define SPINDLE_STOP           SPINDLE_ENABLE_PORT->BSRRH = SPINDLE_ENABLE_BIT
+#define SPINDLE_RUN             SPINDLE_ENABLE_PORT->BSRRL = SPINDLE_ENABLE_BIT//¸ßµçÆ½
+#define SPINDLE_CW           	SPINDLE_DIRECTION_PORT->BSRRH = SPINDLE_DIRECTION_BIT
+#define SPINDLE_CCW             SPINDLE_DIRECTION_PORT->BSRRL = SPINDLE_DIRECTION_BIT
+
 
 void spindle_init();
 void spindle_run(int8_t direction); //, uint16_t rpm);

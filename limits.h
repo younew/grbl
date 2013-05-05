@@ -26,5 +26,6 @@ void limits_init();
 
 // perform the homing cycle
 void limits_go_home();
-
+//限位中断处理函数
+void LimitISR(void)
 #endif

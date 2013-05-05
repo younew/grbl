@@ -48,30 +48,76 @@ volatile uint8_t tx_buffer_tail = 0;
     return (RX_BUFFER_SIZE - (rx_buffer_head-rx_buffer_tail));
   }
 #endif
-
-void serial_init()
+//-------------------------------配置刻串口 IO口--------------------------------
+//  
+static void serial_io_init(void)
 {
-  // Set baud rate
-  #if BAUD_RATE < 57600
-    uint16_t UBRR0_value = ((F_CPU / (8L * BAUD_RATE)) - 1)/2 ;
-    UCSR0A &= ~(1 << U2X0); // baud doubler off  - Only needed on Uno XXX
-  #else
-    uint16_t UBRR0_value = ((F_CPU / (4L * BAUD_RATE)) - 1)/2;
-    UCSR0A |= (1 << U2X0);  // baud doubler on for high baud rates, i.e. 115200
-  #endif
-  UBRR0H = UBRR0_value >> 8;
-  UBRR0L = UBRR0_value;
-            
-  // enable rx and tx
-  UCSR0B |= 1<<RXEN0;
-  UCSR0B |= 1<<TXEN0;
-	
-  // enable interrupt on complete reception of a byte
-  UCSR0B |= 1<<RXCIE0;
-	  
-  // defaults to 8-bit, no parity, 1 stop bit
-}
+	GPIO_InitTypeDef GPIO_InitStructure;
+  NVIC_InitTypeDef NVIC_InitStructure;
+  
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+  
+  GPIO_PinAFConfig(MY_USART_PC_GPIO_PORT, MY_USART_PC_TX_SOURCE, MY_USART_PC_TX_AF);
+  GPIO_PinAFConfig(MY_USART_PC_GPIO_PORT, MY_USART_PC_RX_SOURCE, MY_USART_PC_RX_AF);
+  
+  /* Configure USART Tx as alternate function  */
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
 
+  GPIO_InitStructure.GPIO_Pin = MY_USART_PC_GPIO_TxPin;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_Init(MY_USART_PC_GPIO_PORT, &GPIO_InitStructure);
+
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_Pin = MY_USART_PC_GPIO_RxPin;
+  GPIO_Init(MY_USART_PC_GPIO_PORT, &GPIO_InitStructure);
+
+  GPIO_InitStructure.GPIO_Pin = MY_USART_PC_GPIO_CTSPin;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;//GPIO_Mode_IN;
+	GPIO_Init(MY_USART_PC_GPIO_CTS_GPIO_PORT, &GPIO_InitStructure);
+  
+  GPIO_InitStructure.GPIO_Pin = MY_USART_PC_GPIO_RTSPin;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_Init(MY_USART_PC_GPIO_RTS_GPIO_PORT, &GPIO_InitStructure);
+	//取消阻塞接收,可以接收
+	ResetUSART_RTS;
+  NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure); 
+}
+void serial_init(void)
+{
+	USART_InitTypeDef USART_InitStructure;
+  
+  serial_o_init();
+  
+  USART_InitStructure.USART_BaudRate = BAUD_RATE;//19200;
+	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+	USART_InitStructure.USART_StopBits = USART_StopBits_1;
+	USART_InitStructure.USART_Parity = USART_Parity_No;
+	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;//USART_HardwareFlowControl_RTS_CTS;//
+	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+
+  USART_Init(MY_USART_PC, &USART_InitStructure);
+  USART_ITConfig(MY_USART_PC, USART_IT_TXE, DISABLE);
+	USART_ITConfig(MY_USART_PC, USART_IT_RXNE, ENABLE);
+	USART_Cmd(MY_USART_PC, ENABLE);
+  
+  USART_InitStructure.USART_BaudRate = 9600;
+	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+	USART_InitStructure.USART_StopBits = USART_StopBits_1;
+	USART_InitStructure.USART_Parity = USART_Parity_No;
+	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+
+	USART_Init(USART_RS485, &USART_InitStructure);
+  USART_ITConfig(USART_RS485, USART_IT_TXE, DISABLE);
+	USART_ITConfig(USART_RS485, USART_IT_RXNE, ENABLE);
+	USART_Cmd(USART_RS485, ENABLE);
+}
 void serial_write(uint8_t data) {
   // Calculate next head
   uint8_t next_head = tx_buffer_head + 1;
@@ -87,43 +133,81 @@ void serial_write(uint8_t data) {
   tx_buffer_head = next_head;
   
   // Enable Data Register Empty Interrupt to make sure tx-streaming is running
-  UCSR0B |=  (1 << UDRIE0); 
+  //UCSR0B |=  (1 << UDRIE0); 
+  USART_ITConfig(USART1, USART_IT_TXE, ENABLE);
 }
-
-// Data Register Empty Interrupt handler
-#ifdef __AVR_ATmega644P__
-ISR(USART0_UDRE_vect)
-#else
-ISR(USART_UDRE_vect)
-#endif
+void USART1_IRQHandler(void)
 {
-  // Temporary tx_buffer_tail (to optimize for volatile)
-  uint8_t tail = tx_buffer_tail;
-  
-  #ifdef ENABLE_XONXOFF
-    if (flow_ctrl == SEND_XOFF) { 
-      UDR0 = XOFF_CHAR; 
-      flow_ctrl = XOFF_SENT; 
-    } else if (flow_ctrl == SEND_XON) { 
-      UDR0 = XON_CHAR; 
-      flow_ctrl = XON_SENT; 
-    } else
-  #endif
-  { 
-    // Send a byte from the buffer	
-    UDR0 = tx_buffer[tail];
-  
-    // Update tail position
-    tail++;
-    if (tail == TX_BUFFER_SIZE) { tail = 0; }
-  
-    tx_buffer_tail = tail;
-  }
-  
-  // Turn off Data Register Empty Interrupt to stop tx-streaming if this concludes the transfer
-  if (tail == tx_buffer_head) { UCSR0B &= ~(1 << UDRIE0); }
-}
+	u8 data;
+	u8 next_head;
+	//接收中断
+	if (USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)
+	{
+		data = USART1->DR;//USART_ReceiveData(MY_USART);
+		  // Pick off runtime command characters directly from the serial stream. These characters are
+		// not passed into the buffer, but these set system state flag bits for runtime execution.
+		switch (data) {
+			case CMD_STATUS_REPORT: sys.execute |= EXEC_STATUS_REPORT; break; // Set as true
+			case CMD_CYCLE_START:   sys.execute |= EXEC_CYCLE_START; break; // Set as true
+			case CMD_FEED_HOLD:     sys.execute |= EXEC_FEED_HOLD; break; // Set as true
+			case CMD_RESET:         mc_reset(); break; // Call motion control reset routine.
+			default: // Write character to buffer    
+			  next_head = rx_buffer_head + 1;
+			  if (next_head == RX_BUFFER_SIZE) { next_head = 0; }
 
+			  // Write data to buffer unless it is full.
+			  if (next_head != rx_buffer_tail) {
+			    rx_buffer[rx_buffer_head] = data;
+			    rx_buffer_head = next_head;    
+			    
+			    #ifdef ENABLE_XONXOFF
+			      if ((get_rx_buffer_count() >= RX_BUFFER_FULL) && flow_ctrl == XON_SENT) {
+			        flow_ctrl = SEND_XOFF;
+			        //UCSR0B |=  (1 << UDRIE0); // Force TX
+			        USART_ITConfig(USART1, USART_IT_TXE, ENABLE);
+			      } 
+			    #endif
+			    
+		  	}
+		}
+	}
+	//发送中断
+	if (USART_GetITStatus(USART1, USART_IT_TXE) == SET)
+	{
+		// Temporary tx_buffer_tail (to optimize for volatile)
+		uint8_t tail = tx_buffer_tail;
+
+#ifdef ENABLE_XONXOFF
+		if (flow_ctrl == SEND_XOFF) { 
+		  USART1->DR = XOFF_CHAR; 
+		  flow_ctrl = XOFF_SENT; 
+		} else if (flow_ctrl == SEND_XON) { 
+		  USART1->DR = XON_CHAR; 
+		  flow_ctrl = XON_SENT; 
+		} else
+#endif
+		{ 
+			// Send a byte from the buffer	
+			USART1->DR = tx_buffer[tail];
+
+			// Update tail position
+			tail++;
+			if (tail == TX_BUFFER_SIZE) { tail = 0; }
+
+			tx_buffer_tail = tail;
+		}
+  
+	  	// Turn off Data Register Empty Interrupt to stop tx-streaming if this concludes the transfer
+	  	if (tail == tx_buffer_head) 
+			{ USART_ITConfig(USART1, USART_IT_TXE, DISABLE);}
+	}
+	//溢出-如果发生溢出需要先读SR,再读DR寄存器 则可清除不断入中断的问题
+	if(USART_GetFlagStatus(USART1,USART_FLAG_ORE)==SET)
+	{
+		USART_ClearFlag(USART1, USART_FLAG_ORE);	//读SR
+		USART_ReceiveData(USART1);				//读DR
+	}
+}
 uint8_t serial_read()
 {
   if (rx_buffer_head == rx_buffer_tail) {
@@ -141,42 +225,6 @@ uint8_t serial_read()
     #endif
     
     return data;
-  }
-}
-
-#ifdef __AVR_ATmega644P__
-ISR(USART0_RX_vect)
-#else
-ISR(USART_RX_vect)
-#endif
-{
-  uint8_t data = UDR0;
-  uint8_t next_head;
-  
-  // Pick off runtime command characters directly from the serial stream. These characters are
-  // not passed into the buffer, but these set system state flag bits for runtime execution.
-  switch (data) {
-    case CMD_STATUS_REPORT: sys.execute |= EXEC_STATUS_REPORT; break; // Set as true
-    case CMD_CYCLE_START:   sys.execute |= EXEC_CYCLE_START; break; // Set as true
-    case CMD_FEED_HOLD:     sys.execute |= EXEC_FEED_HOLD; break; // Set as true
-    case CMD_RESET:         mc_reset(); break; // Call motion control reset routine.
-    default: // Write character to buffer    
-      next_head = rx_buffer_head + 1;
-      if (next_head == RX_BUFFER_SIZE) { next_head = 0; }
-    
-      // Write data to buffer unless it is full.
-      if (next_head != rx_buffer_tail) {
-        rx_buffer[rx_buffer_head] = data;
-        rx_buffer_head = next_head;    
-        
-        #ifdef ENABLE_XONXOFF
-          if ((get_rx_buffer_count() >= RX_BUFFER_FULL) && flow_ctrl == XON_SENT) {
-            flow_ctrl = SEND_XOFF;
-            UCSR0B |=  (1 << UDRIE0); // Force TX
-          } 
-        #endif
-        
-      }
   }
 }
 

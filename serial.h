@@ -55,5 +55,5 @@ uint8_t serial_read();
 
 // Reset and empty data in read buffer. Used by e-stop and reset.
 void serial_reset_read_buffer();
-
+void USART1_IRQHandler(void);
 #endif

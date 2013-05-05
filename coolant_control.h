@@ -27,6 +27,12 @@
 #define COOLANT_FLOOD_ENABLE 1
 #define COOLANT_DISABLE 0 // Must be zero.
 
+#define COOLANT_FLOOD_STOP           SPINDLE_ENABLE_PORT->BSRRH = SPINDLE_ENABLE_BIT
+#define COOLANT_FLOOD_RUN             SPINDLE_ENABLE_PORT->BSRRL = SPINDLE_ENABLE_BIT//高电平
+
+#define COOLANT_MIST_STOP           SPINDLE_ENABLE_PORT->BSRRH = SPINDLE_ENABLE_BIT
+#define COOLANT_MIST_RUN             SPINDLE_ENABLE_PORT->BSRRL = SPINDLE_ENABLE_BIT//高电平
+
 void coolant_init();
 void coolant_stop();
 void coolant_run(uint8_t mode);

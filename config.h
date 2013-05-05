@@ -21,7 +21,7 @@
 
 #ifndef config_h
 #define config_h
-
+#include "stm32f4xx.h"
 // IMPORTANT: Any changes here requires a full re-compiling of the source code to propagate them.
 
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
@@ -31,55 +31,122 @@
 #define BAUD_RATE 9600
 
 // Define pin-assignments
-// NOTE: All step bit and direction pins must be on the same port.
-#define STEPPING_DDR       DDRD
-#define STEPPING_PORT      PORTD
-#define X_STEP_BIT         2  // Uno Digital Pin 2
-#define Y_STEP_BIT         3  // Uno Digital Pin 3
-#define Z_STEP_BIT         4  // Uno Digital Pin 4
-#define X_DIRECTION_BIT    5  // Uno Digital Pin 5
-#define Y_DIRECTION_BIT    6  // Uno Digital Pin 6
-#define Z_DIRECTION_BIT    7  // Uno Digital Pin 7
+//@ 定义步进电机定时器
+//
+#define  TIM_STEP_MOTOR     			TIM2//X 轴 步进脉冲定时器
+#define  TIM_STEP_MOTOR_DELAY        	TIM5// 步进脉冲延时定时器
+// 定义步进电机IO引脚.
+//! X轴
+#define  X_DIR_PORT         		GPIOE
+#define  X_STEP_PORT         		GPIOE
+#define  X_DIRECTION_BIT          GPIO_Pin_14
+#define  X_STEP_BIT          		GPIO_Pin_15
+//! Y轴
+//------------------------------------------
+#define  Y_DIR_PORT         		GPIOE
+#define  Y_STEP_PORT         	GPIOE
+#define  Y_DIRECTION_BIT          GPIO_Pin_12
+#define  Y_STEP_BIT          		GPIO_Pin_13
+//! Z轴
+//------------------------------------------
+#define  Z_DIR_PORT         		GPIOE
+#define  Z_STEP_PORT         		GPIOE
+#define  Z_DIRECTION_BIT          GPIO_Pin_10
+#define  Z_STEP_BIT          		GPIO_Pin_11
+
 #define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
 #define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
 #define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
-
-#define STEPPERS_DISABLE_DDR    DDRB
+/*
 #define STEPPERS_DISABLE_PORT   PORTB
-#define STEPPERS_DISABLE_BIT    0  // Uno Digital Pin 8
+#define STEPPERS_DISABLE_BIT    	0  // Uno Digital Pin 8
 #define STEPPERS_DISABLE_MASK (1<<STEPPERS_DISABLE_BIT)
-
-// NOTE: All limit bit pins must be on the same port
-#define LIMIT_DDR       DDRB
-#define LIMIT_PIN       PINB
-#define LIMIT_PORT      PORTB
+*/
+//---------------------------限位-----------------------------
+//x轴
 #define X_LIMIT_BIT     1  // Uno Digital Pin 9
 #define Y_LIMIT_BIT     2  // Uno Digital Pin 10
 #define Z_LIMIT_BIT     3  // Uno Digital Pin 11
-#define LIMIT_INT       PCIE0  // Pin change interrupt enable pin
-#define LIMIT_INT_vect  PCINT0_vect 
-#define LIMIT_PCMSK     PCMSK0 // Pin change interrupt register
 #define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
-
-#define SPINDLE_ENABLE_DDR   DDRB
-#define SPINDLE_ENABLE_PORT  PORTB
-#define SPINDLE_ENABLE_BIT   4  // Uno Digital Pin 12
-
-#define SPINDLE_DIRECTION_DDR   DDRB
-#define SPINDLE_DIRECTION_PORT  PORTB
-#define SPINDLE_DIRECTION_BIT   5  // Uno Digital Pin 13 (NOTE: D13 can't be pulled-high input due to LED.)
-
-#define COOLANT_FLOOD_DDR   DDRC
-#define COOLANT_FLOOD_PORT  PORTC
-#define COOLANT_FLOOD_BIT   3  // Uno Analog Pin 3
-
+#define LIMITzn_PORT                       GPIOB
+#define LIMITzn_PIN                        GPIO_Pin_9
+#define LIMITz_PORT                        GPIOE
+#define LIMITz_PIN                         GPIO_Pin_0
+#define LIMITzo_PORT                       GPIOE
+#define LIMITzo_PIN                        GPIO_Pin_1
+#define LIMITzn_LINK_GPIO_CLK               RCC_AHB1Periph_GPIOB
+#define LIMITzn_EXTI_LINE                   EXTI_Line9
+#define LIMITzn_PORT_SOURCE                 EXTI_PortSourceGPIOB
+#define LIMITzn_PIN_SOURCE                  EXTI_PinSource9
+#define LIMITzn_LINK_EXTI_IRQn              EXTI9_5_IRQn 
+#define LIMITz_LINK_GPIO_CLK               RCC_AHB1Periph_GPIOE
+#define LIMITz_EXTI_LINE                   EXTI_Line0
+#define LIMITz_PORT_SOURCE                 EXTI_PortSourceGPIOE
+#define LIMITz_PIN_SOURCE                  EXTI_PinSource0
+#define LIMITz_LINK_EXTI_IRQn              EXTI0_IRQn 
+#define LIMITzo_LINK_GPIO_CLK               RCC_AHB1Periph_GPIOE
+#define LIMITzo_EXTI_LINE                   EXTI_Line1
+#define LIMITzo_PORT_SOURCE                 EXTI_PortSourceGPIOE
+#define LIMITzo_PIN_SOURCE                  EXTI_PinSource1
+#define LIMITzo_LINK_EXTI_IRQn              EXTI1_IRQn 
+// y
+#define LIMITxn_PORT                       GPIOE
+#define LIMITxn_PIN                        GPIO_Pin_2
+#define LIMITx_PORT                        GPIOE
+#define LIMITx_PIN                         GPIO_Pin_3
+#define LIMITxo_PORT                       GPIOE
+#define LIMITxo_PIN                        GPIO_Pin_4
+#define LIMITxn_LINK_GPIO_CLK               RCC_AHB1Periph_GPIOE
+#define LIMITxn_EXTI_LINE                   EXTI_Line2
+#define LIMITxn_PORT_SOURCE                 EXTI_PortSourceGPIOE
+#define LIMITxn_PIN_SOURCE                  EXTI_PinSource2
+#define LIMITxn_LINK_EXTI_IRQn              EXTI2_IRQn
+#define LIMITx_LINK_GPIO_CLK               RCC_AHB1Periph_GPIOE
+#define LIMITx_EXTI_LINE                   EXTI_Line3
+#define LIMITx_PORT_SOURCE                 EXTI_PortSourceGPIOE
+#define LIMITx_PIN_SOURCE                  EXTI_PinSource3
+#define LIMITx_LINK_EXTI_IRQn              EXTI3_IRQn
+#define LIMITxo_LINK_GPIO_CLK               RCC_AHB1Periph_GPIOE
+#define LIMITxo_EXTI_LINE                   EXTI_Line4
+#define LIMITxo_PORT_SOURCE                 EXTI_PortSourceGPIOE
+#define LIMITxo_PIN_SOURCE                  EXTI_PinSource4
+#define LIMITxo_LINK_EXTI_IRQn              EXTI4_IRQn
+// z
+#define LIMITyn_PORT                       GPIOE
+#define LIMITyn_PIN                        GPIO_Pin_5
+#define LIMITy_PORT                        GPIOE
+#define LIMITy_PIN                         GPIO_Pin_6
+#define LIMITyo_PORT                       GPIOC
+#define LIMITyo_PIN                        GPIO_Pin_13
+#define LIMITyn_LINK_GPIO_CLK               RCC_AHB1Periph_GPIOE
+#define LIMITyn_EXTI_LINE                   EXTI_Line5
+#define LIMITyn_PORT_SOURCE                 EXTI_PortSourceGPIOE
+#define LIMITyn_PIN_SOURCE                  EXTI_PinSource5
+#define LIMITyn_LINK_EXTI_IRQn              EXTI9_5_IRQn
+#define LIMITy_LINK_GPIO_CLK               RCC_AHB1Periph_GPIOE
+#define LIMITy_EXTI_LINE                   EXTI_Line6
+#define LIMITy_PORT_SOURCE                 EXTI_PortSourceGPIOE
+#define LIMITy_PIN_SOURCE                  EXTI_PinSource6
+#define LIMITy_LINK_EXTI_IRQn              EXTI9_5_IRQn
+#define LIMITyo_LINK_GPIO_CLK               RCC_AHB1Periph_GPIOC
+#define LIMITyo_EXTI_LINE                   EXTI_Line13
+#define LIMITyo_PORT_SOURCE                 EXTI_PortSourceGPIOC
+#define LIMITyo_PIN_SOURCE                  EXTI_PinSource13
+#define LIMITyo_LINK_EXTI_IRQn              EXTI15_10_IRQn
+//---------------------------主轴-----------------------------
+#define  SPINDLE_ENABLE_PORT           GPIOD
+#define  SPINDLE_ENABLE_BIT           GPIO_Pin_8
+#define  SPINDLE_DIRECTION_PORT           GPIOD
+#define  SPINDLE_DIRECTION_BIT           GPIO_Pin_9
+//冷却
+#define  COOLANT_FLOOD_PORT           GPIOD
+#define  COOLANT_FLOOD_BIT           GPIO_Pin_10
 // NOTE: Uno analog pins 4 and 5 are reserved for an i2c interface, and may be installed at
 // a later date if flash and memory space allows.
 // #define ENABLE_M7  // Mist coolant disabled by default. Uncomment to enable.
 #ifdef ENABLE_M7
-  #define COOLANT_MIST_DDR   DDRC
-  #define COOLANT_MIST_PORT  PORTC
-  #define COOLANT_MIST_BIT   4 // Uno Analog Pin 4
+  #define COOLANT_MIST_PORT  GPIOD
+  #define COOLANT_MIST_BIT   GPIO_Pin_11 // Uno Analog Pin 4
 #endif  
 
 // NOTE: All pinouts pins must be on the same port

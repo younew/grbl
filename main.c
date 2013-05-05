@@ -25,6 +25,7 @@
 
 //#include <avr/interrupt.h>
 //#include <avr/pgmspace.h>
+#include "stm32f4xx.h"
 #include "config.h"
 #include "planner.h"
 #include "nuts_bolts.h"

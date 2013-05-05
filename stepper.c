@@ -29,7 +29,8 @@
 #include "planner.h"
 
 // Some useful constants
-#define TICKS_PER_MICROSECOND (F_CPU/1000000)
+#define F_CPU   168
+#define TICKS_PER_MICROSECOND (F_CPU/2/1000000)
 #define CYCLES_PER_ACCELERATION_TICK ((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
 
 // Stepper state variable. Contains running data and trapezoid variables.
@@ -144,7 +145,8 @@ inline static uint8_t iterate_trapezoid_cycle_counter()
 // config_step_timer. It pops blocks from the block_buffer and executes them by pulsing the stepper pins appropriately. 
 // It is supported by The Stepper Port Reset Interrupt which it uses to reset the stepper port after each pulse. 
 // The bresenham line tracer algorithm controls all three stepper outputs simultaneously with these two interrupts.
-ISR(TIMER1_COMPA_vect)
+// 步进电机 定时器中断处理函数
+void TIM2_IRQHandler(void)
 {        
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
   
@@ -158,8 +160,9 @@ ISR(TIMER1_COMPA_vect)
   #endif
   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
-  TCNT2 = step_pulse_time; // Reload timer counter
-  TCCR2B = (1<<CS21); // Begin timer2. Full speed, 1/8 prescaler
+  TIM_STEP_MOTOR_DELAY->CNT = step_pulse_time; // Reload timer counter
+  //TCCR2B = (1<<CS21); // Begin timer2. Full speed, 1/8 prescaler
+  TIM_Cmd(TIM_STEP_MOTOR_DELAY, ENABLE);
 
   busy = true;
   // Re-enable interrupts to allow ISR_TIMER2_OVERFLOW to trigger on-time and allow serial communications
@@ -322,7 +325,8 @@ ISR(TIMER2_OVF_vect)
 {
   // Reset stepping pins (leave the direction pins)
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
-  TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed. 
+  //TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed.
+  TIM_Cmd(TIM_STEP_MOTOR_DELAY, DISABLE);
 }
 
 #ifdef STEP_PULSE_DELAY
@@ -345,78 +349,101 @@ void st_reset()
   current_block = NULL;
   busy = false;
 }
-
-// Initialize and start the stepper motor subsystem
-void st_init()
+//  配置X轴步进电机IO口
+static void step_io_init(void)
 {
-  // Configure directions of interface pins
-  STEPPING_DDR |= STEPPING_MASK;
-  STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask;
-  STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
+  GPIO_InitTypeDef GPIO_InitStructure;
+  //================X轴步进电机=======================
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;//GPIO_Mode_Out_PP
+  GPIO_InitStructure.GPIO_Pin = X_STEP_BIT;
+  GPIO_Init(X_STEP_PORT, &GPIO_InitStructure);
+  
+  GPIO_InitStructure.GPIO_Pin = X_DIRECTION_BIT;
+  GPIO_Init(X_DIR_PORT, &GPIO_InitStructure);
+  //================Y轴步进电机=======================
+  GPIO_InitStructure.GPIO_Pin = Y_STEP_BIT;
+  GPIO_Init(Y_STEP_PORT, &GPIO_InitStructure);
+  
+  GPIO_InitStructure.GPIO_Pin = Y_DIRECTION_BIT;
+  GPIO_Init(Y_DIR_PORT, &GPIO_InitStructure);
 
-  // waveform generation = 0100 = CTC
-  TCCR1B &= ~(1<<WGM13);
-  TCCR1B |=  (1<<WGM12);
-  TCCR1A &= ~(1<<WGM11); 
-  TCCR1A &= ~(1<<WGM10);
+   //================Z轴步进电机=======================
+  GPIO_InitStructure.GPIO_Pin = Z_STEP_BIT;
+  GPIO_Init(Z_STEP_PORT, &GPIO_InitStructure);
+  
+  GPIO_InitStructure.GPIO_Pin = Z_DIRECTION_BIT;
+  GPIO_Init(Z_DIR_PORT, &GPIO_InitStructure);
+  
+	GPIO_WriteBit(X_STEP_PORT, X_STEP_BIT, (BitAction) (0));
+	GPIO_WriteBit(Y_STEP_PORT, Y_STEP_BIT, (BitAction) (0));
+	GPIO_WriteBit(Z_STEP_PORT, Z_STEP_BIT, (BitAction) (0));
+}
+// Initialize and start the stepper motor subsystem
+//@ \brief 轴步进电机定时器 初始化
+//
+void st_init(void)
+{
+	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+  NVIC_InitTypeDef NVIC_InitStructure;
 
-  // output mode = 00 (disconnected)
-  TCCR1A &= ~(3<<COM1A0); 
-  TCCR1A &= ~(3<<COM1B0); 
-	
-  // Configure Timer 2
-  TCCR2A = 0; // Normal operation
-  TCCR2B = 0; // Disable timer until needed.
-  TIMSK2 |= (1<<TOIE2); // Enable Timer2 Overflow interrupt     
-  #ifdef STEP_PULSE_DELAY
-    TIMSK2 |= (1<<OCIE2A); // Enable Timer2 Compare Match A interrupt
-  #endif
+  step_io_init();
+	TIM_DeInit(TIM_STEP_MOTOR);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+	TIM_TimeBaseStructure.TIM_Period = 1000;//(u16) (STEP_MOTOR_TIM_PERIOD - 1);
+	TIM_TimeBaseStructure.TIM_Prescaler = 0;//STEP_MOTOR_TIM_PRESCALE - 1;
+	TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInit(TIM_STEP_MOTOR, &TIM_TimeBaseStructure);
 
+	TIM_SetCounter(TIM_STEP_MOTOR, 0);
+	TIM_ARRPreloadConfig(TIM_STEP_MOTOR, ENABLE);
+	// TIM IT enable//
+	TIM_ClearITPendingBit(TIM_STEP_MOTOR, TIM_IT_Update);
+	TIM_ITConfig(TIM_STEP_MOTOR, TIM_IT_Update, ENABLE);
+	TIM_ClearITPendingBit(TIM_STEP_MOTOR, TIM_IT_Update);
+  
+	TIM_Cmd(TIM_STEP_MOTOR, DISABLE);
+  // Enable the TIM2 global Interrupt 
+  NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+TIM_DeInit(TIM_STEP_MOTOR_DELAY);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
+  TIM_TimeBaseStructure.TIM_Prescaler = 168/2/2-1;
+  TIM_TimeBaseInit(TIM_STEP_MOTOR_DELAY, &TIM_TimeBaseStructure);
+  TIM_SetCounter(TIM_STEP_MOTOR_DELAY, 0);
+	TIM_ARRPreloadConfig(TIM_STEP_MOTOR_DELAY, ENABLE);
+	// TIM IT enable//
+	TIM_ClearITPendingBit(TIM_STEP_MOTOR_DELAY, TIM_IT_Update);
+	TIM_ITConfig(TIM_STEP_MOTOR_DELAY, TIM_IT_Update, ENABLE);
+	TIM_ClearITPendingBit(TIM_STEP_MOTOR_DELAY, TIM_IT_Update);
+  
+	TIM_Cmd(TIM_STEP_MOTOR_DELAY, DISABLE);
+#ifdef STEP_PULSE_DELAY
+  // Enable the TIM2 global Interrupt 
+  NVIC_InitStructure.NVIC_IRQChannel = TIM5_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+#endif
   // Start in the idle state, but first wake up to check for keep steppers enabled option.
   st_wake_up();
   st_go_idle();
 }
-
 // Configures the prescaler and ceiling of timer 1 to produce the given rate as accurately as possible.
 // Returns the actual number of cycles per interrupt
 static uint32_t config_step_timer(uint32_t cycles)
 {
-  uint16_t ceiling;
-  uint8_t prescaler;
-  uint32_t actual_cycles;
-  if (cycles <= 0xffffL) {
-    ceiling = cycles;
-    prescaler = 1; // prescaler: 0
-    actual_cycles = ceiling;
-  } else if (cycles <= 0x7ffffL) {
-    ceiling = cycles >> 3;
-    prescaler = 2; // prescaler: 8
-    actual_cycles = ceiling * 8L;
-  } else if (cycles <= 0x3fffffL) {
-    ceiling =  cycles >> 6;
-    prescaler = 3; // prescaler: 64
-    actual_cycles = ceiling * 64L;
-  } else if (cycles <= 0xffffffL) {
-    ceiling =  (cycles >> 8);
-    prescaler = 4; // prescaler: 256
-    actual_cycles = ceiling * 256L;
-  } else if (cycles <= 0x3ffffffL) {
-    ceiling = (cycles >> 10);
-    prescaler = 5; // prescaler: 1024
-    actual_cycles = ceiling * 1024L;    
-  } else {
-    // Okay, that was slower than we actually go. Just set the slowest speed
-    ceiling = 0xffff;
-    prescaler = 5;
-    actual_cycles = 0xffff * 1024;
-  }
-  // Set prescaler
-  TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (prescaler<<CS10);
-  // Set ceiling
-  OCR1A = ceiling;
-  return(actual_cycles);
+	TIM_STEP_MOTOR->ARR = cycles;
+	return(cycles);
 }
-
 static void set_step_events_per_minute(uint32_t steps_per_minute) 
 {
   if (steps_per_minute < MINIMUM_STEPS_PER_MINUTE) { steps_per_minute = MINIMUM_STEPS_PER_MINUTE; }

@@ -17,15 +17,15 @@
         <debug>1</debug>
         <option>
           <name>ExePath</name>
-          <state>Debug\Exe</state>
+          <state>D:\work\ex\grblDebug\Exe</state>
         </option>
         <option>
           <name>ObjPath</name>
-          <state>Debug\Obj</state>
+          <state>D:\work\ex\grblDebug\Obj</state>
         </option>
         <option>
           <name>ListPath</name>
-          <state>Debug\List</state>
+          <state>D:\work\ex\grblDebug\List</state>
         </option>
         <option>
           <name>Variant</name>
@@ -527,7 +527,7 @@
         </option>
         <option>
           <name>AOutputFile</name>
-          <state></state>
+          <state>$FILE_BNAME$.o</state>
         </option>
         <option>
           <name>AMultibyteSupport</name>
@@ -919,6 +919,11 @@
     </settings>
     <settings>
       <name>BILINK</name>
+      <archiveVersion>0</archiveVersion>
+      <data/>
+    </settings>
+    <settings>
+      <name>Coder</name>
       <archiveVersion>0</archiveVersion>
       <data/>
     </settings>
@@ -1838,6 +1843,11 @@
       <archiveVersion>0</archiveVersion>
       <data/>
     </settings>
+    <settings>
+      <name>Coder</name>
+      <archiveVersion>0</archiveVersion>
+      <data/>
+    </settings>
   </configuration>
   <group>
     <name>app</name>
@@ -1885,6 +1895,45 @@
     </file>
     <file>
       <name>$PROJ_DIR$\..\stepper.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\stm32f4xx_it.c</name>
+    </file>
+  </group>
+  <group>
+    <name>stm32f4</name>
+    <file>
+      <name>$PROJ_DIR$\Libraries\STM32F4xx_StdPeriph_Driver\src\misc.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Libraries\CMSIS\Device\ST\STM32F4xx\Source\Templates\iar\startup_stm32f4xx.s</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Libraries\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_crc.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Libraries\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_dbgmcu.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Libraries\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_exti.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Libraries\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_flash.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Libraries\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_gpio.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Libraries\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_rcc.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Libraries\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_syscfg.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Libraries\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_tim.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Libraries\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_usart.c</name>
     </file>
   </group>
 </project>

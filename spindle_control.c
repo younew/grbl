@@ -27,15 +27,25 @@ static uint8_t current_direction;
 
 void spindle_init()
 {
+  GPIO_InitTypeDef  GPIO_InitStructure;
+  
   current_direction = 0;
-  SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT);
-  SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT);  
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_25MHz;
+  
+  GPIO_InitStructure.GPIO_Pin = SPINDLE_ENABLE_BIT;
+  GPIO_Init(SPINDLE_ENABLE_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_Pin = SPINDLE_DIRECTION_BIT;
+  GPIO_Init(SPINDLE_DIRECTION_PORT, &GPIO_InitStructure);
   spindle_stop();
 }
 
 void spindle_stop()
 {
-  SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
+  //SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
+  SPINDLE_STOP;
 }
 
 void spindle_run(int8_t direction) //, uint16_t rpm) 
@@ -44,11 +54,11 @@ void spindle_run(int8_t direction) //, uint16_t rpm)
     plan_synchronize();
     if (direction) {
       if(direction > 0) {
-        SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
+        SPINDLE_CW;//SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
       } else {
-        SPINDLE_DIRECTION_PORT |= 1<<SPINDLE_DIRECTION_BIT;
+        SPINDLE_CCW;//SPINDLE_DIRECTION_PORT |= 1<<SPINDLE_DIRECTION_BIT;
       }
-      SPINDLE_ENABLE_PORT |= 1<<SPINDLE_ENABLE_BIT;
+      SPINDLE_RUN;//SPINDLE_ENABLE_PORT |= 1<<SPINDLE_ENABLE_BIT;
     } else {
       spindle_stop();     
     }

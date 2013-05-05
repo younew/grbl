@@ -1,8 +1,3 @@
----- max_entry_speed 匹配 (7 in 2 文件) ----
-Planner.c:    if (current->entry_speed != current->max_entry_speed) {
-Planner.c:      if ((!current->nominal_length_flag) && (current->max_entry_speed > next->entry_speed)) {
-Planner.c:        current->entry_speed = min( current->max_entry_speed,
-Planner.c:        current->entry_speed = current->max_entry_speed;
-Planner.c:  block->max_entry_speed = vmax_junction;
-Planner.c:  block->max_entry_speed = 0.0;
-Planner.h:  float max_entry_speed;             // Maximum allowable junction entry speed in mm/min
+---- TCCR2B 匹配 (2 in 1 文件) ----
+Stepper.c:  //TCCR2B = (1<<CS21); // Begin timer2. Full speed, 1/8 prescaler
+Stepper.c:  TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed. 
