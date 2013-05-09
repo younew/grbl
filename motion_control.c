@@ -97,11 +97,14 @@ void mc_line(float x, float y, float z, float feed_rate, uint8_t invert_feed_rat
 // for vector transformation direction.
 // The arc is approximated by generating a huge number of tiny, linear segments. The length of each 
 // segment is configured in settings.mm_per_arc_segment.  
+// 圆弧被近似为大量的微小线段。每段的长度由配置里面的
+// settings.mm_per_arc_segment决定
 void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8_t axis_1, 
   uint8_t axis_linear, float feed_rate, uint8_t invert_feed_rate, float radius, uint8_t isclockwise)
 {      
   float center_axis0 = position[axis_0] + offset[axis_0];
   float center_axis1 = position[axis_1] + offset[axis_1];
+  //在于参考平面垂直的轴上的位移
   float linear_travel = target[axis_linear] - position[axis_linear];
   float r_axis0 = -offset[axis_0];  // Radius vector from center to current location
   float r_axis1 = -offset[axis_1];
@@ -109,13 +112,17 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
   float rt_axis1 = target[axis_1] - center_axis1;
   
   // CCW angle between position and target from circle center. Only one atan2() trig computation required.
+  // 参考平面内的角位移
+  // atan2()  求y/x（弧度表示）的反正切值
   float angular_travel = atan2(r_axis0*rt_axis1-r_axis1*rt_axis0, r_axis0*rt_axis0+r_axis1*rt_axis1);
   if (isclockwise) { // Correct atan2 output per direction
     if (angular_travel >= 0) { angular_travel -= 2*M_PI; }
   } else {
     if (angular_travel <= 0) { angular_travel += 2*M_PI; }
   }
-  
+  // 求空间圆弧的弧长= hypot( 参考平面内的弧长,  在于参考平面垂直的轴上的位移)
+  //hypot :对于给定的直角三角形的两个直角边，求其斜边的长度。
+  // 扇形 弧长=  圆心角*半径
   float millimeters_of_travel = hypot(angular_travel*radius, fabs(linear_travel));
   if (millimeters_of_travel == 0.0) { return; }
   uint16_t segments = floor(millimeters_of_travel/settings.mm_per_arc_segment);
@@ -124,8 +131,8 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
   // all segments.
   if (invert_feed_rate) { feed_rate *= segments; }
  
-  float theta_per_segment = angular_travel/segments;
-  float linear_per_segment = linear_travel/segments;
+  float theta_per_segment = angular_travel/segments;// 参考平面内的角位移
+  float linear_per_segment = linear_travel/segments;//在于参考平面垂直的轴上的位移
   
   /* Vector rotation by transformation matrix: r is the original vector, r_T is the rotated vector,
      and phi is the angle of rotation. Solution approach by Jens Geisler.

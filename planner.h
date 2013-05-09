@@ -34,7 +34,7 @@ typedef struct {
   // Fields used by the bresenham algorithm for tracing the line
   uint8_t  direction_bits;            // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
   uint32_t steps_x, steps_y, steps_z; // Step count along each axis
-  int32_t  step_event_count;          // The number of step events required to complete this block//最大步数
+  int32_t  step_event_count;         //最大步数(主轴步数) // The number of step events required to complete this block
 
   // Fields used by the motion planner to manage acceleration
   float nominal_speed;               // The nominal speed for this block in mm/min  
@@ -48,8 +48,8 @@ typedef struct {
   uint32_t initial_rate;              // The step rate at start of block  
   uint32_t final_rate;                // The step rate at end of block
   int32_t rate_delta;                 // The steps/minute to add or subtract when changing speed (must be positive)
-  uint32_t accelerate_until;          // The index of the step event on which to stop acceleration//加速段的步数
-  uint32_t decelerate_after;          // The index of the step event on which to start decelerating//减速段开始时的步数
+  uint32_t accelerate_until;          // The index of the step event on which to stop acceleration// 加速段的结尾索引//加速段的步数
+  uint32_t decelerate_after;          // The index of the step event on which to start decelerating//减速段开始时的索引(步数)
   uint32_t nominal_rate;              // The nominal step rate for this block in step_events/minute
 
 } block_t;

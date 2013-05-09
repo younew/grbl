@@ -112,6 +112,7 @@ static float intersection_distance(float initial_rate, float final_rate, float a
 **                       distance 
 */
 // Calculate the beginning speed that results in target_velocity when accelerated over given distance.
+// 在给定位移、减速度和目标速度的条件下，求处速度的最大值
 static float max_allowable_speed(float acceleration, float target_velocity, float distance) 
 {
   return( sqrt(target_velocity*target_velocity-2*acceleration*distance) );
@@ -233,27 +234,31 @@ static void calculate_trapezoid_for_block(block_t *block, float entry_factor, fl
   block->initial_rate = ceil(block->nominal_rate*entry_factor); // (step/min)//进一法取整
   block->final_rate = ceil(block->nominal_rate*exit_factor); // (step/min)
   int32_t acceleration_per_minute = block->rate_delta*ACCELERATION_TICKS_PER_SECOND*60.0; // (step/min^2)
+  // 加速段所需的步数
   int32_t accelerate_steps = 
     ceil(estimate_acceleration_distance(block->initial_rate, block->nominal_rate, acceleration_per_minute));
+  // 减速段所需的步数
   int32_t decelerate_steps = 
     floor(estimate_acceleration_distance(block->nominal_rate, block->final_rate, -acceleration_per_minute));
     
   // Calculate the size of Plateau(平稳期) of Nominal Rate. 
+  // 匀速段的步数
   int32_t plateau_steps = block->step_event_count-accelerate_steps-decelerate_steps;
   
   // Is the Plateau of Nominal Rate smaller than nothing? That means no cruising, and we will
   // have to use intersection_distance() to calculate when to abort acceleration and start braking 
   // in order to reach the final_rate exactly at the end of this block.
   // 判断梯形加减速是否退化为三角形加减速
-  if (plateau_steps < 0) {  
+  if (plateau_steps < 0) {  // 匀速段的步数小于 0
     accelerate_steps = ceil(
       intersection_distance(block->initial_rate, block->final_rate, acceleration_per_minute, block->step_event_count));
     accelerate_steps = max(accelerate_steps,0); // Check limits due to numerical round-off
     accelerate_steps = min(accelerate_steps,block->step_event_count);
     plateau_steps = 0;
   }  
-  
+  // 加速段的结尾索引
   block->accelerate_until = accelerate_steps;
+  // 减速段开始时的索引(步数)
   block->decelerate_after = accelerate_steps+plateau_steps;
 }     
 
@@ -316,7 +321,7 @@ static void planner_recalculate_trapezoids()
 //
 // All planner computations are performed with doubles (float on Arduinos) to minimize numerical round-
 // off errors. Only when planned values are converted to stepper rate parameters, these are integers.
-
+// 加入新的运动段后， 对运动队列重新规划
 static void planner_recalculate() 
 {     
   planner_reverse_pass();
@@ -396,13 +401,14 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   block->steps_x = labs(target[X_AXIS]-pl.position[X_AXIS]);
   block->steps_y = labs(target[Y_AXIS]-pl.position[Y_AXIS]);
   block->steps_z = labs(target[Z_AXIS]-pl.position[Z_AXIS]);
-  block->step_event_count = max(block->steps_x, max(block->steps_y, block->steps_z));//最大步数
+  //最大步数(主轴步数)
+  block->step_event_count = max(block->steps_x, max(block->steps_y, block->steps_z));
 
   // Bail if this is a zero-length block
   if (block->step_event_count == 0) { return; };//忽略0长运动
   
   // Compute path vector in terms of absolute step target and current positions
-  // 根据运动步数和当前位置，计算路径向量
+  // 根据运动步数和当前位置，计算路径向量的模
   float delta_mm[3];
   delta_mm[X_AXIS] = (target[X_AXIS]-pl.position[X_AXIS])/settings.steps_per_mm[X_AXIS];
   delta_mm[Y_AXIS] = (target[Y_AXIS]-pl.position[Y_AXIS])/settings.steps_per_mm[Y_AXIS];
@@ -430,16 +436,19 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   // To generate trapezoids with contant acceleration between blocks the rate_delta must be computed 
   // specifically for each line to compensate for this phenomenon:
   // Convert universal acceleration for direction-dependent stepper rate change parameter
+  // 计算速度的变化量(加速度)，考虑到3轴同时运动的情况，加速度
+  // 要做相应的调整，rate_delta = acceleration * 主轴的运动量/ 3轴合成运动量
   block->rate_delta = ceil( block->step_event_count*inverse_millimeters *  
         settings.acceleration / (60 * ACCELERATION_TICKS_PER_SECOND )); // (step/min/acceleration_tick)
 
-  // Compute path unit vector                            
+  // 计算3轴的单位向量Compute path unit vector                            
   float unit_vec[3];
 
   unit_vec[X_AXIS] = delta_mm[X_AXIS]*inverse_millimeters;
   unit_vec[Y_AXIS] = delta_mm[Y_AXIS]*inverse_millimeters;
   unit_vec[Z_AXIS] = delta_mm[Z_AXIS]*inverse_millimeters;  
 
+  // 计算拐点的最大允许速度
   // Compute maximum allowable entry speed at junction by centripetal acceleration approximation.
   // Let a circle be tangent to both previous and current path line segments, where the junction 
   // deviation is defined as the distance from the junction to the closest edge of the circle, 
@@ -461,7 +470,7 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   if ((block_buffer_head != block_buffer_tail) && (pl.previous_nominal_speed > 0.0)) {
     // Compute cosine of angle between previous and current path. (prev_unit_vec is negative)
     // NOTE: Max junction velocity is computed without sin() or acos() by trig half angle identity.
-    // 计算前一段和当前段的夹角的cos，注意这里不计算sin()或cos()函数
+    // 计算前一段和当前段的夹角的cos，注意这里不计算sin()或acos()函数
     float cos_theta = - pl.previous_unit_vec[X_AXIS] * unit_vec[X_AXIS] 
                        - pl.previous_unit_vec[Y_AXIS] * unit_vec[Y_AXIS] 
                        - pl.previous_unit_vec[Z_AXIS] * unit_vec[Z_AXIS] ;
@@ -473,7 +482,10 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
       // Skip and avoid divide by zero for straight junctions at 180 degrees. Limit to min() of nominal speeds.
       if (cos_theta > -0.95) {
         // Compute maximum junction velocity based on maximum acceleration and junction deviation
+        // 夹角一半的sin()
         float sin_theta_d2 = sqrt(0.5*(1.0-cos_theta)); // Trig half angle identity. Always positive.
+        //double theta = acos(costheta);
+	//double radius = delta * sin(theta/2)/(1-sin(theta/2));
         vmax_junction = min(vmax_junction,
           sqrt(settings.acceleration * settings.junction_deviation * sin_theta_d2/(1.0-sin_theta_d2)) );
       }
@@ -482,6 +494,8 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   block->max_entry_speed = vmax_junction;
   
   // Initialize block entry speed. Compute based on deceleration to user-defined MINIMUM_PLANNER_SPEED.
+  // 在给定位移、减速度和目标速度的条件下，求处速度的最大值
+  // 目标速度为:MINIMUM_PLANNER_SPEED    (0.0)
   float v_allowable = max_allowable_speed(-settings.acceleration,MINIMUM_PLANNER_SPEED,block->millimeters);
   block->entry_speed = min(vmax_junction, v_allowable);
 
@@ -498,6 +512,7 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   block->recalculate_flag = true; // Always calculate trapezoid for new block
 
   // Update previous path unit_vector and nominal speed
+   // 更新规划器的单位向量和正常速度
   memcpy(pl.previous_unit_vec, unit_vec, sizeof(unit_vec)); // pl.previous_unit_vec[] = unit_vec[]
   pl.previous_nominal_speed = block->nominal_speed;
   
@@ -505,8 +520,9 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   block_buffer_head = next_buffer_head;  
   next_buffer_head = next_block_index(block_buffer_head);
   
-  // Update planner position
+  // 更新规划器的位置Update planner position
   memcpy(pl.position, target, sizeof(target)); // pl.position[] = target[]
+  //加入新的运动段后， 对运动队列重新规划
   planner_recalculate(); 
 }
 

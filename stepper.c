@@ -43,7 +43,7 @@ typedef struct {
   uint32_t step_events_completed;  // The number of step events left in current motion
 
   // Used by the trapezoid generator
-  uint32_t cycles_per_step_event;        // The number of machine cycles between each step event
+  uint32_t cycles_per_step_event;  // 一个步进脉冲包含的机器周期The number of machine cycles between each step event
   uint32_t trapezoid_tick_cycle_counter; // The cycles since last trapezoid_tick. Used to generate ticks at a steady
                                               // pace without allocating a separate timer
   uint32_t trapezoid_adjusted_rate;      // The current rate of step_events according to the trapezoid generator
@@ -105,7 +105,7 @@ void st_wake_up()
       step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
     #endif
     // Enable stepper driver interrupt
-    TIMSK1 |= (1<<OCIE1A);
+    TIM_Cmd(TIM_STEP_MOTOR, ENABLE);//TIMSK1 |= (1<<OCIE1A);
   }
 }
 
@@ -171,6 +171,7 @@ void TIM2_IRQHandler(void)
   sei();
   
   // If there is no current block, attempt to pop one from the buffer
+  // 如果现在没有运动，则从planner buffer中取出一段运动数据
   if (current_block == NULL) {
     // Anything in the buffer? If so, initialize next motion.
     current_block = plan_get_current_block();
@@ -195,6 +196,7 @@ void TIM2_IRQHandler(void)
 
   if (current_block != NULL) {
     // Execute step displacement profile by bresenham line algorithm
+    // 执行bresenham 直线插补算法
     out_bits = current_block->direction_bits;
     st.counter_x += current_block->steps_x;
     if (st.counter_x > 0) {
@@ -218,10 +220,10 @@ void TIM2_IRQHandler(void)
       else { sys.position[Z_AXIS]++; }
     }
     
-    st.step_events_completed++; // Iterate step events
+    st.step_events_completed++; // Iterate step events 计数加一步
 
     // While in block steps, check for de/ac-celeration events and execute them accordingly.
-    if (st.step_events_completed < current_block->step_event_count) {
+    if (st.step_events_completed < current_block->step_event_count) { //当前运动段(直线段)未结束 
       if (sys.state == STATE_HOLD) {
         // Check for and execute feed hold by enforcing a steady deceleration from the moment of 
         // execution. The rate of deceleration is limited by rate_delta and will never decelerate
@@ -253,7 +255,7 @@ void TIM2_IRQHandler(void)
         // discrete velocity changes increase and accuracy can increase as well to a point. Numerical 
         // round-off errors can effect this, if set too high. This is important to note if a user has 
         // very high acceleration and/or feedrate requirements for their machine.
-        if (st.step_events_completed < current_block->accelerate_until) {
+        if (st.step_events_completed < current_block->accelerate_until) {// 加速段
           // Iterate cycle counter and check if speeds need to be increased.
           if ( iterate_trapezoid_cycle_counter() ) {
             st.trapezoid_adjusted_rate += current_block->rate_delta;
@@ -263,12 +265,12 @@ void TIM2_IRQHandler(void)
             }
             set_step_events_per_minute(st.trapezoid_adjusted_rate);
           }
-        } else if (st.step_events_completed >= current_block->decelerate_after) {
+        } else if (st.step_events_completed >= current_block->decelerate_after) {//减速段
           // Reset trapezoid tick cycle counter to make sure that the deceleration is performed the
           // same every time. Reset to CYCLES_PER_ACCELERATION_TICK/2 to follow the midpoint rule for
           // an accurate approximation of the deceleration curve. For triangle profiles, down count
           // from current cycle counter to ensure exact deceleration curve.
-          if (st.step_events_completed == current_block-> decelerate_after) {
+          if (st.step_events_completed == current_block-> decelerate_after) {//减速段第一步
             if (st.trapezoid_adjusted_rate == current_block->nominal_rate) {
               st.trapezoid_tick_cycle_counter = CYCLES_PER_ACCELERATION_TICK/2; // Trapezoid profile
             } else {  
@@ -276,6 +278,7 @@ void TIM2_IRQHandler(void)
             }
           } else {
             // Iterate cycle counter and check if speeds need to be reduced.
+            // 判断是否到了减速的时刻(新的速度台阶)
             if ( iterate_trapezoid_cycle_counter() ) {  
               // NOTE: We will only do a full speed reduction if the result is more than the minimum safe 
               // rate, initialized in trapezoid reset as 1.5 x rate_delta. Otherwise, reduce the speed by
@@ -297,7 +300,7 @@ void TIM2_IRQHandler(void)
               set_step_events_per_minute(st.trapezoid_adjusted_rate);
             }
           }
-        } else {
+        } else {//匀速段
           // No accelerations. Make sure we cruise exactly at the nominal rate.
           if (st.trapezoid_adjusted_rate != current_block->nominal_rate) {
             st.trapezoid_adjusted_rate = current_block->nominal_rate;
@@ -306,9 +309,9 @@ void TIM2_IRQHandler(void)
         }
       }            
     } else {   
-      // If current block is finished, reset pointer 
+      //当前运动段(直线段)结束 If current block is finished, reset pointer 
       current_block = NULL;
-      plan_discard_current_block();
+      plan_discard_current_block();//更新索引: block_buffer_tail 
     }
   }
   out_bits ^= settings.invert_mask;  // Apply step and direction invert mask    

@@ -1,3 +1,22 @@
----- TCCR2B 匹配 (2 in 1 文件) ----
-Stepper.c:  //TCCR2B = (1<<CS21); // Begin timer2. Full speed, 1/8 prescaler
-Stepper.c:  TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed. 
+---- step_event_count 匹配 (21 in 4 文件) ----
+Limits.c:  uint32_t step_event_count = max(steps[X_AXIS], max(steps[Y_AXIS], steps[Z_AXIS]));  
+Limits.c:  float ds = step_event_count/sqrt(dist);
+Limits.c:  int32_t counter_x = -(step_event_count >> 1); // Bresenham counters
+Limits.c:        counter_x -= step_event_count;
+Limits.c:        counter_y -= step_event_count;
+Limits.c:        counter_z -= step_event_count;
+Planner.c:  int32_t plateau_steps = block->step_event_count-accelerate_steps-decelerate_steps;
+Planner.c:      intersection_distance(block->initial_rate, block->final_rate, acceleration_per_minute, block->step_event_count));
+Planner.c:    accelerate_steps = min(accelerate_steps,block->step_event_count);
+Planner.c:  block->step_event_count = max(block->steps_x, max(block->steps_y, block->steps_z));
+Planner.c:  if (block->step_event_count == 0) { return; };//忽略0长运动
+Planner.c:  block->nominal_rate = ceil(block->step_event_count * inverse_minute); // (step/min) Always > 0
+Planner.c:  block->rate_delta = ceil( block->step_event_count*inverse_millimeters *  
+Planner.c:  // Only remaining millimeters and step_event_count need to be updated for planner recalculate. 
+Planner.c:  block->millimeters = (block->millimeters*step_events_remaining)/block->step_event_count;
+Planner.c:  block->step_event_count = step_events_remaining;
+Planner.h:  int32_t  step_event_count;         //最大步数(主轴步数) // The number of step events required to complete this block
+Stepper.c:      st.counter_x = -(current_block->step_event_count >> 1);
+Stepper.c:      st.event_count = current_block->step_event_count;
+Stepper.c:    if (st.step_events_completed < current_block->step_event_count) {
+Stepper.c:    plan_cycle_reinitialize(current_block->step_event_count - st.step_events_completed);
