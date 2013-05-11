@@ -19,7 +19,6 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//#include <avr/io.h>
 #include "protocol.h"
 #include "report.h"
 #include "stepper.h"
@@ -37,7 +36,7 @@ typedef struct {
   uint8_t pulse_microseconds;
   float default_feed_rate;
   float default_seek_rate;
-  uint8_t invert_mask;
+  uint16_t invert_mask;
   float mm_per_arc_segment;
   float acceleration;
   float junction_deviation;
@@ -203,7 +202,9 @@ uint8_t settings_store_global_setting(int parameter, float value) {
 }
 
 // Initialize the config subsystem
-void settings_init() {
+void settings_init() 
+{
+  SPI_FLASH_Init();
   if(!read_global_settings()) {
     report_status_message(STATUS_SETTING_READ_FAIL);
     settings_reset(true);

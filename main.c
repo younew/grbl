@@ -49,7 +49,7 @@ int main(void)
   serial_init(); // Setup serial baud rate and interrupts
   settings_init(); // Load grbl settings from EEPROM
   st_init(); // Setup stepper pins and interrupt timers
-  sei(); // Enable interrupts
+  //sei(); // Enable interrupts
   
   memset(&sys, 0, sizeof(sys));  // Clear all system variables
   sys.abort = true;   // Set abort to complete initialization

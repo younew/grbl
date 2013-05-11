@@ -21,11 +21,23 @@
 #ifndef limits_h
 #define limits_h 
 
+#define ENABLE_LIMIT_INT          EXTI->IMR |= (1<<LIMITxn_PIN | 1<<LIMITyn_PIN | 1<<LIMITzn_PIN)
+#define DISABLE_LIMIT_INT         EXTI->IMR &= ~(1<<LIMITxn_PIN | 1<<LIMITyn_PIN | 1<<LIMITzn_PIN)                              
+extern u16 g_limit;
 // initialize the limits module
 void limits_init();
 
 // perform the homing cycle
 void limits_go_home();
 //限位中断处理函数
-void LimitISR(void)
+void LimitISR(void);
+u8 IsLimitX(void);
+u8 IsLimitXn(void);
+u8 IsLimitXo(void);
+u8 IsLimitY(void);
+u8 IsLimitYn(void);
+u8 IsLimitYo(void);
+u8 IsLimitZ(void);
+u8 IsLimitZn(void);
+u8 IsLimitZo(void);
 #endif

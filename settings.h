@@ -61,12 +61,12 @@ typedef struct {
   uint8_t pulse_microseconds;
   float default_feed_rate;
   float default_seek_rate;
-  uint8_t invert_mask;
+  uint16_t invert_mask;
   float mm_per_arc_segment;
   float acceleration;
   float junction_deviation;
   uint8_t flags;  // Contains default boolean settings
-  uint8_t homing_dir_mask;
+  uint16_t homing_dir_mask;
   float homing_feed_rate;
   float homing_seek_rate;
   uint16_t homing_debounce_delay;

@@ -21,7 +21,7 @@
 #ifndef protocol_h
 #define protocol_h
 
-//#include <avr/sleep.h>
+#include "stm32f4xx.h"
 
 // Line buffer size from the serial input stream to be executed.
 // NOTE: Not a problem except for extreme cases, but the line buffer size can be too small
@@ -48,5 +48,5 @@ void protocol_execute_runtime();
 
 // Execute the startup script lines stored in EEPROM upon initialization
 void protocol_execute_startup();
-
+void IO_IN_ISR(void);
 #endif

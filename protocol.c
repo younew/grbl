@@ -18,15 +18,12 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
-
-//#include <avr/io.h>
-//#include <avr/interrupt.h>
+#include "config.h"
 #include "protocol.h"
 #include "gcode.h"
 #include "serial.h"
 #include "print.h"
 #include "settings.h"
-#include "config.h"
 #include "nuts_bolts.h"
 #include "stepper.h"
 #include "report.h"
@@ -46,13 +43,44 @@ static void protocol_reset_line_buffer()
 
 void protocol_init() 
 {
+  GPIO_InitTypeDef GPIO_InitStructure;
+  EXTI_InitTypeDef EXTI_InitStructure;
+  NVIC_InitTypeDef NVIC_InitStructure;
+
   protocol_reset_line_buffer();
   report_init_message(); // Welcome message   
   
-  PINOUT_DDR &= ~(PINOUT_MASK); // Set as input pins
-  PINOUT_PORT |= PINOUT_MASK; // Enable internal pull-up resistors. Normal high operation.
-  PINOUT_PCMSK |= PINOUT_MASK;   // Enable specific pins of the Pin Change Interrupt
-  PCICR |= (1 << PINOUT_INT);   // Enable Pin Change Interrupt
+  GPIO_InitStructure.GPIO_Pin = PIN_RESET | PIN_FEED_HOLD | PIN_CYCLE_START;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_Init(IN_PORT, &GPIO_InitStructure);
+  
+  SYSCFG_EXTILineConfig(IN_PIN1_PORT_SOURCE, IN_PIN1_PIN_SOURCE);
+  
+  EXTI_InitStructure.EXTI_Line = IN_PIN1_EXTI_LINE;
+  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;//  EXTI_Trigger_Falling 
+  EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+  EXTI_Init(&EXTI_InitStructure);
+
+  NVIC_InitStructure.NVIC_IRQChannel = IN_PIN1_EXTI_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x03;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure); 
+  
+  SYSCFG_EXTILineConfig(IN_PIN2_PORT_SOURCE, IN_PIN2_PIN_SOURCE);
+  EXTI_InitStructure.EXTI_Line = IN_PIN2_EXTI_LINE;
+  EXTI_Init(&EXTI_InitStructure);
+  NVIC_InitStructure.NVIC_IRQChannel = IN_PIN2_EXTI_IRQn;
+  NVIC_Init(&NVIC_InitStructure); 
+  
+  SYSCFG_EXTILineConfig(IN_PIN3_PORT_SOURCE, IN_PIN3_PIN_SOURCE);
+  EXTI_InitStructure.EXTI_Line = IN_PIN3_EXTI_LINE;
+  EXTI_Init(&EXTI_InitStructure);
+  NVIC_InitStructure.NVIC_IRQChannel = IN_PIN3_EXTI_IRQn;
+  NVIC_Init(&NVIC_InitStructure);
 }
 
 // Executes user startup script, if stored.
@@ -75,15 +103,15 @@ void protocol_execute_startup()
 // only the runtime command execute variable to have the main program execute these when 
 // its ready. This works exactly like the character-based runtime commands when picked off
 // directly from the incoming serial data stream.
-ISR(PINOUT_INT_vect) 
+void IO_IN_ISR(void) 
 {
   // Enter only if any pinout pin is actively low.
-  if ((PINOUT_PIN & PINOUT_MASK) ^ PINOUT_MASK) { 
-    if (bit_isfalse(PINOUT_PIN,bit(PIN_RESET))) {
+  if ( (uint16_t)IN_PORT->IDR & PIN_IN_MASK ) { 
+    if (bit_isfalse((uint16_t)IN_PORT->IDR,bit(PIN_RESET))) {
       mc_reset();
-    } else if (bit_isfalse(PINOUT_PIN,bit(PIN_FEED_HOLD))) {
+    } else if (bit_isfalse((uint16_t)IN_PORT->IDR,bit(PIN_FEED_HOLD))) {
       sys.execute |= EXEC_FEED_HOLD; 
-    } else if (bit_isfalse(PINOUT_PIN,bit(PIN_CYCLE_START))) {
+    } else if (bit_isfalse((uint16_t)IN_PORT->IDR,bit(PIN_CYCLE_START))) {
       sys.execute |= EXEC_CYCLE_START;
     }
   }

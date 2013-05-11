@@ -37,9 +37,12 @@ void printString(const char *s)
 // Print a string stored in PGM-memory
 void printPgmString(const char *s)
 {
+  /*
   char c;
   while ((c = pgm_read_byte_near(s++)))
     serial_write(c);
+  */
+  printString(s);
 }
 
 // void printIntegerInBase(unsigned long n, unsigned long base)

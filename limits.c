@@ -18,10 +18,7 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
-  
-#include <util/delay.h>
-//#include <avr/io.h>
-//#include <avr/interrupt.h>
+
 #include "stepper.h"
 #include "settings.h"
 #include "nuts_bolts.h"
@@ -34,7 +31,7 @@
 #include "report.h"
 
 #define MICROSECONDS_PER_ACCELERATION_TICK  (1000000/ACCELERATION_TICKS_PER_SECOND)
-
+u16 g_limit = 0;
 void limits_init() 
 {
   GPIO_InitTypeDef GPIO_InitStructure;
@@ -71,7 +68,7 @@ void limits_init()
   EXTI_InitStructure.EXTI_Line = LIMITxn_EXTI_LINE;
   EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
   EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;//  EXTI_Trigger_Falling 
-  if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
+  if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE))
   	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
   else
   	EXTI_InitStructure.EXTI_LineCmd = DISABLE;
@@ -244,14 +241,14 @@ static void homing_cycle(uint8_t cycle_mask, int8_t pos_dir, bool invert_pin, fl
   uint32_t step_rate = 0;  // Tracks step rate. Initialized from 0 rate. (in step/min)
   uint32_t trap_counter = MICROSECONDS_PER_ACCELERATION_TICK/2; // Acceleration trapezoid counter
   uint8_t out_bits;
-  uint8_t limit_state;
+  uint16_t limit_state;
   for(;;) {
   
     // Reset out bits. Both direction and step pins appropriately inverted and set.
     out_bits = out_bits0;
     
     // Get limit pin state.
-    limit_state = LIMIT_PIN;
+    limit_state = g_limit;//LIMIT_PIN;
     if (invert_pin) { limit_state ^= LIMIT_MASK; } // If leaving switch, invert to move.
     
     // Set step pins by Bresenham line algorithm. If limit switch reached, disable and
@@ -259,7 +256,7 @@ static void homing_cycle(uint8_t cycle_mask, int8_t pos_dir, bool invert_pin, fl
     if (cycle_mask & (1<<X_AXIS)) {
       counter_x += steps[X_AXIS];
       if (counter_x > 0) {
-        if (limit_state & (1<<X_LIMIT_BIT)) { out_bits ^= (1<<X_STEP_BIT); }
+        if (limit_state & ( LIMITxn_PIN)) { out_bits ^= ( X_STEP_BIT); }
         else { cycle_mask &= ~(1<<X_AXIS); }
         counter_x -= step_event_count;
       }
@@ -267,7 +264,7 @@ static void homing_cycle(uint8_t cycle_mask, int8_t pos_dir, bool invert_pin, fl
     if (cycle_mask & (1<<Y_AXIS)) {
       counter_y += steps[Y_AXIS];
       if (counter_y > 0) {
-        if (limit_state & (1<<Y_LIMIT_BIT)) { out_bits ^= (1<<Y_STEP_BIT); }
+        if (limit_state & ( LIMITyn_PIN)) { out_bits ^= ( Y_STEP_BIT); }
         else { cycle_mask &= ~(1<<Y_AXIS); }
         counter_y -= step_event_count;
       }
@@ -275,7 +272,7 @@ static void homing_cycle(uint8_t cycle_mask, int8_t pos_dir, bool invert_pin, fl
     if (cycle_mask & (1<<Z_AXIS)) {
       counter_z += steps[Z_AXIS];
       if (counter_z > 0) {
-        if (limit_state & (1<<Z_LIMIT_BIT)) { out_bits ^= (1<<Z_STEP_BIT); }
+        if (limit_state & ( LIMITzn_PIN)) { out_bits ^= ( Z_STEP_BIT); }
         else { cycle_mask &= ~(1<<Z_AXIS); }
         counter_z -= step_event_count;
       }
@@ -285,9 +282,11 @@ static void homing_cycle(uint8_t cycle_mask, int8_t pos_dir, bool invert_pin, fl
     if (!(cycle_mask) || (sys.execute & EXEC_RESET)) { return; }
         
     // Perform step.
-    STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (out_bits & STEP_MASK);
+    //STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (out_bits & STEP_MASK);
+    STEP_PORT->ODR = (STEP_PORT->ODR & ~STEP_MASK) | (out_bits & STEP_MASK);
     delay_us(settings.pulse_microseconds);
-    STEPPING_PORT = out_bits0;
+  TODO://???(out_bits0 & DIRECTION_MASK)???
+    STEP_PORT->ODR = STEP_PORT->ODR & (~DIRECTION_MASK) | out_bits0;//???(out_bits0 & DIRECTION_MASK)???//STEPPING_PORT = out_bits0;
     delay_us(step_delay);
     
     // Track and set the next step delay, if required. This routine uses another Bresenham
@@ -339,3 +338,68 @@ void limits_go_home()
 
   st_go_idle(); // Call main stepper shutdown routine.  
 }
+
+u8 IsLimitXn(void)
+{
+  if(GPIO_ReadInputDataBit(LIMITxn_PORT,LIMITxn_PIN))
+    return(TRUE);
+  else
+    return(FALSE);
+}
+u8 IsLimitX(void)
+{
+  if(GPIO_ReadInputDataBit(LIMITx_PORT,LIMITx_PIN))
+    return(TRUE);
+  else
+    return(FALSE);
+}
+u8 IsLimitXo(void)
+{
+  if(GPIO_ReadInputDataBit(LIMITxo_PORT,LIMITxo_PIN))
+    return(TRUE);
+  else
+    return(FALSE);
+}
+u8 IsLimitYn(void)
+{
+  if(GPIO_ReadInputDataBit(LIMITyn_PORT,LIMITyn_PIN))
+    return(TRUE);
+  else
+    return(FALSE);
+}
+u8 IsLimitY(void)
+{
+  if(GPIO_ReadInputDataBit(LIMITy_PORT,LIMITy_PIN))
+    return(TRUE);
+  else
+    return(FALSE);
+}
+u8 IsLimitYo(void)
+{
+  if(GPIO_ReadInputDataBit(LIMITyo_PORT,LIMITyo_PIN))
+    return(TRUE);
+  else
+    return(FALSE);
+}
+u8 IsLimitZn(void)
+{
+  if(GPIO_ReadInputDataBit(LIMITzn_PORT,LIMITzn_PIN))
+    return(TRUE);
+  else
+    return(FALSE);
+}
+u8 IsLimitZ(void)
+{
+  if(GPIO_ReadInputDataBit(LIMITz_PORT,LIMITz_PIN))
+    return(TRUE);
+  else
+    return(FALSE);
+}
+u8 IsLimitZo(void)
+{
+  if(GPIO_ReadInputDataBit(LIMITzo_PORT,LIMITzo_PIN))
+    return(TRUE);
+  else
+    return(FALSE);
+}
+

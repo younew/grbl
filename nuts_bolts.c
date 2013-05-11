@@ -19,7 +19,6 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <util/delay.h>
 #include "nuts_bolts.h"
 #include "gcode.h"
 #include "planner.h"
@@ -79,7 +78,7 @@ int read_float(char *line, uint8_t *char_counter, float *float_ptr)
   
   // Convert integer into floating point.
   float fval;
-  fval = __floatunsisf(intval);
+  fval = (float)(intval);//__floatunsisf(intval);
   
   // Apply decimal. Should perform no more than two floating point multiplications for the
   // expected range of E0 to E-4.
@@ -114,7 +113,13 @@ int read_float(char *line, uint8_t *char_counter, float *float_ptr)
 // which only accepts constants in future compiler releases.
 void delay_ms(uint16_t ms) 
 {
-  while ( ms-- ) { _delay_ms(1); }
+  vs32 N,i;
+  N = ms;
+  do{
+    i = 8400;//10900
+    do{
+    }while(i--);
+  }while(N--); 
 }
 
 
@@ -123,21 +128,12 @@ void delay_ms(uint16_t ms)
 // efficiently with larger delays, as the counter adds parasitic time in each iteration.
 void delay_us(uint32_t us) 
 {
-  while (us) {
-    if (us < 10) { 
-      _delay_us(1);
-      us--;
-    } else if (us < 100) {
-      _delay_us(10);
-      us -= 10;
-    } else if (us < 1000) {
-      _delay_us(100);
-      us -= 100;
-    } else {
-      _delay_ms(1);
-      us -= 1000;
-    }
-  }
+  s32 i;
+  
+  i = us*12*2;
+  do{
+    ;
+  }while(i--);
 }
 
 // Syncs all internal position vectors to the current system position.

@@ -392,9 +392,9 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   // Compute direction bits for this block
   //计算方向位
   block->direction_bits = 0;
-  if (target[X_AXIS] < pl.position[X_AXIS]) { block->direction_bits |= (1<<X_DIRECTION_BIT); }
-  if (target[Y_AXIS] < pl.position[Y_AXIS]) { block->direction_bits |= (1<<Y_DIRECTION_BIT); }
-  if (target[Z_AXIS] < pl.position[Z_AXIS]) { block->direction_bits |= (1<<Z_DIRECTION_BIT); }
+  if (target[X_AXIS] < pl.position[X_AXIS]) { block->direction_bits |= ( X_DIRECTION_BIT); }
+  if (target[Y_AXIS] < pl.position[Y_AXIS]) { block->direction_bits |= ( Y_DIRECTION_BIT); }
+  if (target[Z_AXIS] < pl.position[Z_AXIS]) { block->direction_bits |= ( Z_DIRECTION_BIT); }
   
   // Number of steps for each axis
   // 各轴的步数

@@ -1,6 +1,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_it.h"
-
+#include "config.h"
+#include "limits.h"
+#include "protocol.h"
 /**
   * @brief  This function handles EXTI15_10
   * @param  None
@@ -8,19 +10,20 @@
   */
 void EXTI15_10_IRQHandler(void) 
 {
+  /*
   if(EXTI_GetITStatus(ETH_LINK_EXTI_LINE) != RESET)
   {
     Eth_Link_ITHandler(DP83848_PHY_ADDRESS);
-    /* Clear interrupt pending bit */
+    //Clear interrupt pending bit //
     EXTI_ClearITPendingBit(ETH_LINK_EXTI_LINE);
-  }
+  }*/
 #ifdef DEVELOP_LIMIT_ORIGN
   if(EXTI_GetITStatus(LIMITyo_EXTI_LINE) != RESET)
   {
-    if(IsLimitYo())
-      gStatusLimitY |= LIMIT_Yo;
-    else
-      gStatusLimit &= (~LIMIT_Yo);
+    //if(IsLimitYo())
+    //  gStatusLimitY |= LIMIT_Yo;
+    //else
+    //  gStatusLimit &= (~LIMIT_Yo);
     EXTI_ClearITPendingBit(LIMITyo_EXTI_LINE);
   }
 #endif
@@ -30,17 +33,27 @@ void EXTI15_10_IRQHandler(void)
   * @param  None
   * @retval None
   */
+void EXTI0_IRQHandler(void) 
+{//------------------------------IN 限位------------------------------
+  if(EXTI_GetITStatus(LIMITx_EXTI_LINE) != RESET)
+  {
+    IO_IN_ISR();
+    EXTI_ClearITPendingBit(LIMITx_EXTI_LINE);
+  }
+}
 void EXTI2_IRQHandler(void) 
 {//------------------------------X 轴负限位------------------------------
   if(EXTI_GetITStatus(LIMITxn_EXTI_LINE) != RESET)
   {
     if(IsLimitXn())
     {
-      gStatusHomeX |= LIMIT_Xn;
+      g_limit |= LIMITxn_PIN;
       LimitISR();
     }
     else
-      gStatusHomeX &= (~LIMIT_Xn);
+      g_limit &= (~LIMITxn_PIN);
+    
+    IO_IN_ISR();
     EXTI_ClearITPendingBit(LIMITxn_EXTI_LINE);
   }
 }
@@ -50,11 +63,12 @@ void EXTI3_IRQHandler(void)
   {
     if(IsLimitX())
     {
-      gStatusLimitX |= LIMIT_X;
+      g_limit |= LIMITx_PIN;
       LimitISR();
     }
     else
-      gStatusLimitX &= (~LIMIT_X);
+      g_limit &= ~LIMITx_PIN;
+    IO_IN_ISR();
     EXTI_ClearITPendingBit(LIMITx_EXTI_LINE);
   }
 }
@@ -65,37 +79,37 @@ void EXTI4_IRQHandler(void)
 #ifdef DEVELOP_LIMIT_ORIGN
     if(IsLimitXo())
     {
-      gStatusLimit |= LIMIT_Xo;
+      g_limit |= LIMITxo_PIN;
     }
     else
-      gStatusLimit &= (~LIMIT_Xo);
+      g_limit &= (~LIMITxo_PIN);
 #endif
     EXTI_ClearITPendingBit(LIMITxo_EXTI_LINE);
   }
 }
-//------------------------------X 轴 + - 限位------------------------------
+//------------------------------y轴 + - 限位------------------------------
 void EXTI9_5_IRQHandler(void) 
 {
   if(EXTI_GetITStatus(LIMITy_EXTI_LINE) != RESET)
   {
     if(IsLimitY())
     {
-      gStatusLimitY |= LIMIT_Y;
+      g_limit |= LIMITyn_PIN;
       LimitISR();
     }
     else
-      gStatusLimitY &= (~LIMIT_Y);
+      g_limit &= (~LIMITyn_PIN);
     EXTI_ClearITPendingBit(LIMITy_EXTI_LINE);
   }
   if(EXTI_GetITStatus(LIMITyn_EXTI_LINE) != RESET)
   {
     if(IsLimitYn())
     {
-      gStatusHomeY |= LIMIT_Yn;
+      g_limit |= LIMITy_PIN;
       LimitISR();
     }
     else
-      gStatusHomeY &= (~LIMIT_Yn);
+      g_limit &= (~LIMITy_PIN);
     EXTI_ClearITPendingBit(LIMITyn_EXTI_LINE);
   }
 }

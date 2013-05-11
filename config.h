@@ -27,6 +27,9 @@
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
 #define DEFAULTS_GENERIC
 
+#define M_PI   3.1415926
+#define TRUE   1
+#define FALSE  0
 // Serial baud rate
 #define BAUD_RATE 9600
 
@@ -36,6 +39,7 @@
 #define  TIM_STEP_MOTOR     			TIM2//X 轴 步进脉冲定时器
 #define  TIM_STEP_MOTOR_DELAY        	TIM5// 步进脉冲延时定时器
 // 定义步进电机IO引脚.
+#define  STEP_PORT   GPIOE
 //! X轴
 #define  X_DIR_PORT         		GPIOE
 #define  X_STEP_PORT         		GPIOE
@@ -54,20 +58,29 @@
 #define  Z_DIRECTION_BIT          GPIO_Pin_10
 #define  Z_STEP_BIT          		GPIO_Pin_11
 
-#define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
-#define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
-#define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
-/*
-#define STEPPERS_DISABLE_PORT   PORTB
-#define STEPPERS_DISABLE_BIT    	0  // Uno Digital Pin 8
-#define STEPPERS_DISABLE_MASK (1<<STEPPERS_DISABLE_BIT)
-*/
+#define STEP_MASK       (u16)(( X_STEP_BIT)|( Y_STEP_BIT)|( Z_STEP_BIT)) // All step bits
+#define DIRECTION_MASK  (u16)((X_DIRECTION_BIT)|( Y_DIRECTION_BIT)|( Z_DIRECTION_BIT)) // All direction bits
+#define STEPPING_MASK   (u16)(STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
+//#define STEPPING_PORT   STEP_PORT->BSRRL = (STEPP_PORT->ODR & ~STEP_MASK) | (out_bits & STEP_MASK);\
+//                        STEP_PORT->BSRRH = ((~STEPP_PORT->ODR) & ~STEP_MASK) | (~(out_bits) & STEP_MASK);//rsset
+//#define STEPPING_PORT   STEP_PORT->ODR = (STEPP_PORT->ODR & ~STEP_MASK) | (out_bits & STEP_MASK);\
+
+//#define STEPPERS_DISABLE_PORT   PORTB
+//#define STEPPERS_DISABLE_BIT    	0  // Uno Digital Pin 8
+//#define STEPPERS_DISABLE_MASK (1<<STEPPERS_DISABLE_BIT)
+
 //---------------------------限位-----------------------------
+#define LIMIT_Xn  0x0001
+#define LIMIT_X   0x0002 
+#define LIMIT_Xo  0x0004
+#define LIMIT_Yn  0x0008
+#define LIMIT_Y   0x0010 
+#define LIMIT_Yo  0x0020
+#define LIMIT_Zn  0x0040
+#define LIMIT_Z   0x0080 
+#define LIMIT_Zo  0x0100
 //x轴
-#define X_LIMIT_BIT     1  // Uno Digital Pin 9
-#define Y_LIMIT_BIT     2  // Uno Digital Pin 10
-#define Z_LIMIT_BIT     3  // Uno Digital Pin 11
-#define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
+
 #define LIMITzn_PORT                       GPIOB
 #define LIMITzn_PIN                        GPIO_Pin_9
 #define LIMITz_PORT                        GPIOE
@@ -133,6 +146,8 @@
 #define LIMITyo_PORT_SOURCE                 EXTI_PortSourceGPIOC
 #define LIMITyo_PIN_SOURCE                  EXTI_PinSource13
 #define LIMITyo_LINK_EXTI_IRQn              EXTI15_10_IRQn
+
+#define LIMIT_MASK (( LIMITxn_PIN)|( LIMITyn_PIN)|( LIMITzn_PIN)) // All limit bits
 //---------------------------主轴-----------------------------
 #define  SPINDLE_ENABLE_PORT           GPIOD
 #define  SPINDLE_ENABLE_BIT           GPIO_Pin_8
@@ -150,17 +165,82 @@
 #endif  
 
 // NOTE: All pinouts pins must be on the same port
-#define PINOUT_DDR       DDRC
-#define PINOUT_PIN       PINC
-#define PINOUT_PORT      PORTC
-#define PIN_RESET        0  // Uno Analog Pin 0
-#define PIN_FEED_HOLD    1  // Uno Analog Pin 1
-#define PIN_CYCLE_START  2  // Uno Analog Pin 2
-#define PINOUT_INT       PCIE1  // Pin change interrupt enable pin
-#define PINOUT_INT_vect  PCINT1_vect
-#define PINOUT_PCMSK     PCMSK1 // Pin change interrupt register
-#define PINOUT_MASK ((1<<PIN_RESET)|(1<<PIN_FEED_HOLD)|(1<<PIN_CYCLE_START))
+//=====================================OUT======================================
+#define  PINOUT_PORT           GPIOD
+#define  OUT_PIN1           GPIO_Pin_8
+#define  OUT_PIN2           GPIO_Pin_9
+#define  OUT_PIN3           GPIO_Pin_10
+#define  OUT_PIN4           GPIO_Pin_11
+//! 开 吹气
+#define GAS_ON  OUT_PORT->BSRRL = OUT_PIN1//高电平
+//! 关 吹气
+#define GAS_OFF OUT_PORT->BSRRH = OUT_PIN1//低电平
 
+//=====================================IN======================================
+#define WATER_PROTECT     0x01//水保护
+#define UNCAP_PROTECT     0x02//开盖保护
+#define FOOT_SWITCH       0x04//脚踏开关
+#define  IN_PORT           GPIOC
+#define  PIN_RESET           GPIO_Pin_0
+#define  PIN_FEED_HOLD           GPIO_Pin_2
+#define  PIN_CYCLE_START           GPIO_Pin_3
+#define PIN_IN_MASK (( PIN_RESET)|( PIN_FEED_HOLD)|( PIN_CYCLE_START))
+
+#define IN_PIN1_EXTI_IRQn              EXTI0_IRQn 
+#define IN_PIN1_EXTI_LINE                   EXTI_Line0
+#define IN_PIN1_PORT_SOURCE                 EXTI_PortSourceGPIOC
+#define IN_PIN1_PIN_SOURCE                  EXTI_PinSource0
+#define IN_PIN2_EXTI_IRQn              EXTI1_IRQn 
+#define IN_PIN2_EXTI_LINE                   EXTI_Line2
+#define IN_PIN2_PORT_SOURCE                 EXTI_PortSourceGPIOC
+#define IN_PIN2_PIN_SOURCE                  EXTI_PinSource2
+#define IN_PIN3_EXTI_IRQn              EXTI2_IRQn 
+#define IN_PIN3_EXTI_LINE                   EXTI_Line3
+#define IN_PIN3_PORT_SOURCE                 EXTI_PortSourceGPIOC
+#define IN_PIN3_PIN_SOURCE                  EXTI_PinSource2
+//------------------------EEPROM-----------------------------
+#define SPI_FLASH                           SPI3
+#define SPI_FLASH_PORT                     GPIOC
+#define SPI_FLASH_MOSI_PIN                 GPIO_Pin_12
+#define SPI_FLASH_MISO_PIN                 GPIO_Pin_11
+#define SPI_FLASH_CLK_PIN                  GPIO_Pin_10
+#define SPI_FLASH_CS_PORT                     GPIOD
+#define SPI_FLASH_CS_PIN                   GPIO_Pin_0
+
+//=====================================串口1====================================
+#define MY_USART_PC                     USART1
+#define MY_USART_PC_CLK                 RCC_APB2Periph_USART1
+#define MY_USART_PC_TX_SOURCE            GPIO_PinSource9
+#define MY_USART_PC_RX_SOURCE            GPIO_PinSource10
+#define MY_USART_PC_TX_AF                 GPIO_AF_USART1
+#define MY_USART_PC_RX_AF                 GPIO_AF_USART1
+#define MY_USART_PC_GPIO_PORT           GPIOA
+#define MY_USART_PC_GPIO_TxPin          GPIO_Pin_9
+#define MY_USART_PC_GPIO_RxPin          GPIO_Pin_10
+#define MY_USART_PC_GPIO_RTSPin         GPIO_Pin_13
+#define MY_USART_PC_GPIO_RTS_GPIO_PORT  GPIOD
+#define MY_USART_PC_GPIO_CTSPin         GPIO_Pin_14
+#define MY_USART_PC_GPIO_CTS_GPIO_PORT  GPIOD
+
+//串口接收流控
+
+#define ResetUSART_RTS      MY_USART_PC_GPIO_CTS_GPIO_PORT->BSRRH = MY_USART_PC_GPIO_CTSPin;MY_USART_PC_GPIO_RTS_GPIO_PORT->BSRRH = MY_USART_PC_GPIO_RTSPin
+#define SetUSART_RTS        MY_USART_PC_GPIO_CTS_GPIO_PORT->BSRRL = MY_USART_PC_GPIO_CTSPin;MY_USART_PC_GPIO_RTS_GPIO_PORT->BSRRL = MY_USART_PC_GPIO_RTSPin
+
+#define ResetUSART2_RTS     ResetUSART_RTS// MY_USART_PC_GPIO_RTS_GPIO_PORT->BSRRH = MY_USART_PC_GPIO_RTSPin
+#define SetUSART2_RTS       SetUSART_RTS// MY_USART_PC_GPIO_RTS_GPIO_PORT->BSRRL = MY_USART_PC_GPIO_RTSPin
+//===================================串口485====================================
+#define USART_RS485                     USART2
+#define USART_RS485_CLK                 RCC_APB1Periph_USART2
+#define USART_RS485_TX_SOURCE           GPIO_PinSource5
+#define USART_RS485_RX_SOURCE           GPIO_PinSource6
+#define USART_RS485_TX_AF               GPIO_AF_USART2
+#define USART_RS485_RX_AF               GPIO_AF_USART2
+#define USART_RS485_GPIO_PORT           GPIOD
+#define USART_RS485_GPIO_TxPin          GPIO_Pin_5
+#define USART_RS485_GPIO_RxPin          GPIO_Pin_6
+#define USART_RS485_GPIO_TxEnPin        GPIO_Pin_4
+#define USART_RS485_GPIO_RxEnPin        GPIO_Pin_3
 // Define runtime command special characters. These characters are 'picked-off' directly from the
 // serial read data stream and are not passed to the grbl line execution parser. Select characters
 // that do not and must not exist in the streamed g-code program. ASCII control characters may be 

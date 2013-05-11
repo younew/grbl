@@ -21,7 +21,7 @@
 #ifndef coolant_control_h
 #define coolant_control_h 
 
-//#include <avr/io.h>
+#include "stm32f4xx.h"
 
 #define COOLANT_MIST_ENABLE 2
 #define COOLANT_FLOOD_ENABLE 1
@@ -35,6 +35,6 @@
 
 void coolant_init();
 void coolant_stop();
-void coolant_run(uint8_t mode);
+void coolant_run(u8 mode);
 
 #endif

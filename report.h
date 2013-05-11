@@ -20,6 +20,7 @@
 #ifndef report_h
 #define report_h
 
+#include "stm32f4xx.h"
 
 // Define Grbl status codes.
 #define STATUS_OK 0
@@ -48,6 +49,7 @@
 #define MESSAGE_ENABLED 4
 #define MESSAGE_DISABLED 5
 
+#define PSTR(s) ((const char *)(s))
 // Prints system status messages.
 void report_status_message(uint8_t status_code);
 

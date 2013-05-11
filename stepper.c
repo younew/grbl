@@ -54,8 +54,8 @@ static stepper_t st;
 static block_t *current_block;  // A pointer to the block currently being traced
 
 // Used by the stepper driver interrupt
-static uint8_t step_pulse_time; // Step pulse reset time after step rise
-static uint8_t out_bits;        // The next stepping-bits to be output
+static uint16_t step_pulse_time; // Step pulse reset time after step rise
+static uint16_t out_bits;        // The next stepping-bits to be output
 static volatile uint8_t busy;   // True when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
 
 #if STEP_PULSE_DELAY > 0
@@ -86,11 +86,13 @@ static void set_step_events_per_minute(uint32_t steps_per_minute);
 void st_wake_up() 
 {
   // Enable steppers by resetting the stepper disable port
+#ifdef STEPPERS_DISABLE
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { 
     STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); 
   } else { 
     STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
-  }
+  }  
+#endif
   if (sys.state == STATE_CYCLE) {
     // Initialize stepper output bits
     out_bits = (0) ^ (settings.invert_mask); 
@@ -113,17 +115,19 @@ void st_wake_up()
 void st_go_idle() 
 {
   // Disable stepper driver interrupt
-  TIMSK1 &= ~(1<<OCIE1A); 
+  TIM_Cmd(TIM_STEP_MOTOR, DISABLE);//TIMSK1 &= ~(1<<OCIE1A); 
   // Disable steppers only upon system alarm activated or by user setting to not be kept enabled.
   if ((settings.stepper_idle_lock_time != 0xff) || bit_istrue(sys.execute,EXEC_ALARM)) {
     // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
     // stop and not drift from residual inertial forces at the end of the last movement.
     delay_ms(settings.stepper_idle_lock_time);
+#ifdef STEPPERS_DISABLE
     if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { 
       STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); 
     } else { 
       STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); 
     }   
+#endif
   }
 }
 
@@ -151,12 +155,14 @@ void TIM2_IRQHandler(void)
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
   
   // Set the direction pins a couple of nanoseconds before we step the steppers
-  STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
+  //STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
+  STEP_PORT->ODR = STEP_PORT->ODR & (~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
   // Then pulse the stepping pins
   #ifdef STEP_PULSE_DELAY
     step_bits = (STEPPING_PORT & ~STEP_MASK) | out_bits; // Store out_bits to prevent overwriting.
   #else  // Normal operation
-    STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
+    //STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
+     STEP_PORT->ODR = STEP_PORT->ODR & (~STEP_MASK) | (out_bits);
   #endif
   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
@@ -168,7 +174,7 @@ void TIM2_IRQHandler(void)
   // Re-enable interrupts to allow ISR_TIMER2_OVERFLOW to trigger on-time and allow serial communications
   // regardless of time in this handler. The following code prepares the stepper driver for the next
   // step interrupt compare and will always finish before returning to the main program.
-  sei();
+  //sei();
   
   // If there is no current block, attempt to pop one from the buffer
   // 如果现在没有运动，则从planner buffer中取出一段运动数据
@@ -200,23 +206,23 @@ void TIM2_IRQHandler(void)
     out_bits = current_block->direction_bits;
     st.counter_x += current_block->steps_x;
     if (st.counter_x > 0) {
-      out_bits |= (1<<X_STEP_BIT);
+      out_bits |= ( X_STEP_BIT);
       st.counter_x -= st.event_count;
-      if (out_bits & (1<<X_DIRECTION_BIT)) { sys.position[X_AXIS]--; }
+      if (out_bits & ( X_DIRECTION_BIT)) { sys.position[X_AXIS]--; }
       else { sys.position[X_AXIS]++; }
     }
     st.counter_y += current_block->steps_y;
     if (st.counter_y > 0) {
-      out_bits |= (1<<Y_STEP_BIT);
+      out_bits |= ( Y_STEP_BIT);
       st.counter_y -= st.event_count;
-      if (out_bits & (1<<Y_DIRECTION_BIT)) { sys.position[Y_AXIS]--; }
+      if (out_bits & ( Y_DIRECTION_BIT)) { sys.position[Y_AXIS]--; }
       else { sys.position[Y_AXIS]++; }
     }
     st.counter_z += current_block->steps_z;
     if (st.counter_z > 0) {
-      out_bits |= (1<<Z_STEP_BIT);
+      out_bits |= ( Z_STEP_BIT);
       st.counter_z -= st.event_count;
-      if (out_bits & (1<<Z_DIRECTION_BIT)) { sys.position[Z_AXIS]--; }
+      if (out_bits & ( Z_DIRECTION_BIT)) { sys.position[Z_AXIS]--; }
       else { sys.position[Z_AXIS]++; }
     }
     
@@ -324,10 +330,11 @@ void TIM2_IRQHandler(void)
 // a few microseconds, if they execute right before one another. Not a big deal, but can
 // cause issues at high step rates if another high frequency asynchronous interrupt is 
 // added to Grbl.
-ISR(TIMER2_OVF_vect)
+void TIM5_IRQHandler(void)//ISR(TIMER2_OVF_vect)
 {
   // Reset stepping pins (leave the direction pins)
-  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
+  //STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
+  GPIO_ResetBits(STEP_PORT, (~STEP_MASK) | (settings.invert_mask & STEP_MASK)); 
   //TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed.
   TIM_Cmd(TIM_STEP_MOTOR_DELAY, DISABLE);
 }

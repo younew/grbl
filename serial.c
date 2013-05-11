@@ -22,7 +22,6 @@
 /* This code was initially inspired by the wiring_serial module by David A. Mellis which
    used to be a part of the Arduino project. */ 
 
-//#include <avr/interrupt.h>
 #include "serial.h"
 #include "config.h"
 #include "motion_control.h"
@@ -92,7 +91,7 @@ void serial_init(void)
 {
 	USART_InitTypeDef USART_InitStructure;
   
-  serial_o_init();
+  serial_io_init();
   
   USART_InitStructure.USART_BaudRate = BAUD_RATE;//19200;
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
