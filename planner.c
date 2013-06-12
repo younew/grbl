@@ -32,9 +32,9 @@
 #include "protocol.h"
 
 static block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
-static volatile uint8_t block_buffer_head;       // Index of the next block to be pushed
-static volatile uint8_t block_buffer_tail;       // Index of the block to process now
-static uint8_t next_buffer_head;                 // Index of the next buffer head
+static volatile uint16_t block_buffer_head;       // Index of the next block to be pushed
+static volatile uint16_t block_buffer_tail;       // Index of the block to process now
+static uint16_t next_buffer_head;                 // Index of the next buffer head
 
 // Define planner variables
 typedef struct {
@@ -149,7 +149,7 @@ static void planner_reverse_pass_kernel(block_t *previous, block_t *current, blo
 // implements the reverse pass.
 static void planner_reverse_pass() 
 {
-  uint8_t block_index = block_buffer_head;
+  uint16_t block_index = block_buffer_head;
   block_t *block[3] = {NULL, NULL, NULL};
   while(block_index != block_buffer_tail) {    
     block_index = prev_block_index( block_index );
@@ -190,7 +190,7 @@ static void planner_forward_pass_kernel(block_t *previous, block_t *current, blo
 // implements the forward pass.
 static void planner_forward_pass() 
 {
-  uint8_t block_index = block_buffer_tail;
+  uint16_t block_index = block_buffer_tail;
   block_t *block[3] = {NULL, NULL, NULL};
   
   while(block_index != block_buffer_head) {
@@ -277,7 +277,7 @@ static void calculate_trapezoid_for_block(block_t *block, float entry_factor, fl
 // to exit speed and entry speed of one another.
 static void planner_recalculate_trapezoids() 
 {
-  uint8_t block_index = block_buffer_tail;
+  uint16_t block_index = block_buffer_tail;
   block_t *current;
   block_t *next = NULL;
   
@@ -494,7 +494,7 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   block->max_entry_speed = vmax_junction;
   
   // Initialize block entry speed. Compute based on deceleration to user-defined MINIMUM_PLANNER_SPEED.
-  // 在给定位移、减速度和目标速度的条件下，求处速度的最大值
+  // 在给定位移、减速度和目标速度的条件下，求初速度的最大值
   // 目标速度为:MINIMUM_PLANNER_SPEED    (0.0)
   float v_allowable = max_allowable_speed(-settings.acceleration,MINIMUM_PLANNER_SPEED,block->millimeters);
   block->entry_speed = min(vmax_junction, v_allowable);

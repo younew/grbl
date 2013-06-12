@@ -28,12 +28,12 @@
 #include "protocol.h"
 
 uint8_t rx_buffer[RX_BUFFER_SIZE];
-uint8_t rx_buffer_head = 0;
-uint8_t rx_buffer_tail = 0;
+volatile uint32_t rx_buffer_head = 0;
+volatile uint32_t rx_buffer_tail = 0;
 
 uint8_t tx_buffer[TX_BUFFER_SIZE];
-uint8_t tx_buffer_head = 0;
-volatile uint8_t tx_buffer_tail = 0;
+uint32_t tx_buffer_head = 0;
+volatile uint16_t tx_buffer_tail = 0;
 
 #ifdef ENABLE_XONXOFF
   volatile uint8_t flow_ctrl = XON_SENT; // Flow control state variable
@@ -83,7 +83,7 @@ static void serial_io_init(void)
 	ResetUSART_RTS;
   NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure); 
 }
@@ -138,7 +138,8 @@ void serial_write(uint8_t data) {
 void USART1_IRQHandler(void)
 {
 	u8 data;
-	u8 next_head;
+	static u32 next_head;
+  static u32 data_count = 0;
 	//接收中断
 	if (USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)
 	{
@@ -150,7 +151,8 @@ void USART1_IRQHandler(void)
 			case CMD_CYCLE_START:   sys.execute |= EXEC_CYCLE_START; break; // Set as true
 			case CMD_FEED_HOLD:     sys.execute |= EXEC_FEED_HOLD; break; // Set as true
 			case CMD_RESET:         mc_reset(); break; // Call motion control reset routine.
-			default: // Write character to buffer    
+			default: // Write character to buffer   
+        data_count ++;
 			  next_head = rx_buffer_head + 1;
 			  if (next_head == RX_BUFFER_SIZE) { next_head = 0; }
 
@@ -168,6 +170,10 @@ void USART1_IRQHandler(void)
 			    #endif
 			    
 		  	}
+        else
+        {
+          next_head = 0;
+        }
 		}
 	}
 	//发送中断

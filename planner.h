@@ -24,7 +24,7 @@
                  
 // The number of linear motions that can be in the plan at any give time
 #ifndef BLOCK_BUFFER_SIZE
-  #define BLOCK_BUFFER_SIZE 18
+  #define BLOCK_BUFFER_SIZE 254//18
 #endif
 
 // This struct is used when buffering the setup for each linear movement "nominal" values are as specified in 
@@ -32,7 +32,7 @@
 typedef struct {
 
   // Fields used by the bresenham algorithm for tracing the line
-  uint8_t  direction_bits;            // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
+  uint16_t  direction_bits;            // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
   uint32_t steps_x, steps_y, steps_z; // Step count along each axis
   int32_t  step_event_count;         //最大步数(主轴步数) // The number of step events required to complete this block
 

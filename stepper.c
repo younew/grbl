@@ -29,9 +29,14 @@
 #include "planner.h"
 
 // Some useful constants
-#define F_CPU   168
-#define TICKS_PER_MICROSECOND (F_CPU/2/1000000)
-#define CYCLES_PER_ACCELERATION_TICK ((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
+/*
+#define F_CPU   (u32)(168000000)
+#define TICKS_PER_MICROSECOND (u32)(F_CPU/2/1000000)
+#define CYCLES_PER_ACCELERATION_TICK (u32)((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
+*/
+#define F_CPU   (u32)(168000000)  //CPU 168Mhz
+#define TICKS_PER_MICROSECOND (u32)(F_CPU/84/1000000)//定时器计数频率为2Mhz
+#define CYCLES_PER_ACCELERATION_TICK (u32)((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
 
 // Stepper state variable. Contains running data and trapezoid variables.
 typedef struct {
@@ -99,15 +104,16 @@ void st_wake_up()
     // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
     #ifdef STEP_PULSE_DELAY
       // Set total step pulse time after direction pin set. Ad hoc computation from oscilloscope.
-      step_pulse_time = -(((settings.pulse_microseconds+STEP_PULSE_DELAY-2)*TICKS_PER_MICROSECOND) >> 3);
+      step_pulse_time = (((settings.pulse_microseconds+STEP_PULSE_DELAY-2)*TICKS_PER_MICROSECOND) >> 3);
       // Set delay between direction pin write and step command.
       OCR2A = -(((settings.pulse_microseconds)*TICKS_PER_MICROSECOND) >> 3);
     #else // Normal operation
       // Set step pulse time. Ad hoc computation from oscilloscope. Uses two's complement.
-      step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
+      step_pulse_time = settings.pulse_microseconds*2-1;//(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
     #endif
     // Enable stepper driver interrupt
     TIM_Cmd(TIM_STEP_MOTOR, ENABLE);//TIMSK1 |= (1<<OCIE1A);
+    TIM_ITConfig(TIM_STEP_MOTOR, TIM_IT_Update, ENABLE);
   }
 }
 
@@ -115,11 +121,13 @@ void st_wake_up()
 void st_go_idle() 
 {
   // Disable stepper driver interrupt
+  TIM_ITConfig(TIM_STEP_MOTOR, TIM_IT_Update, DISABLE);//DISABLE
   TIM_Cmd(TIM_STEP_MOTOR, DISABLE);//TIMSK1 &= ~(1<<OCIE1A); 
   // Disable steppers only upon system alarm activated or by user setting to not be kept enabled.
   if ((settings.stepper_idle_lock_time != 0xff) || bit_istrue(sys.execute,EXEC_ALARM)) {
     // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
     // stop and not drift from residual inertial forces at the end of the last movement.
+    // 延时一段时间，确保电机停止，消除惯性
     delay_ms(settings.stepper_idle_lock_time);
 #ifdef STEPPERS_DISABLE
     if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { 
@@ -144,16 +152,20 @@ inline static uint8_t iterate_trapezoid_cycle_counter()
     return(false);
   }
 }          
-
 // "The Stepper Driver Interrupt" - This timer interrupt is the workhorse of Grbl. It is executed at the rate set with
 // config_step_timer. It pops blocks from the block_buffer and executes them by pulsing the stepper pins appropriately. 
 // It is supported by The Stepper Port Reset Interrupt which it uses to reset the stepper port after each pulse. 
 // The bresenham line tracer algorithm controls all three stepper outputs simultaneously with these two interrupts.
 // 步进电机 定时器中断处理函数
 void TIM2_IRQHandler(void)
-{        
+{     
+  static u32 step_count=0;
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
   
+  step_count ++;
+  if(step_count>399)
+    step_count = 400;
+  TIM_ClearITPendingBit(TIM_STEP_MOTOR, TIM_IT_Update);
   // Set the direction pins a couple of nanoseconds before we step the steppers
   //STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
   STEP_PORT->ODR = STEP_PORT->ODR & (~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
@@ -166,9 +178,10 @@ void TIM2_IRQHandler(void)
   #endif
   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
-  TIM_STEP_MOTOR_DELAY->CNT = step_pulse_time; // Reload timer counter
+  TIM_STEP_MOTOR_DELAY->ARR = step_pulse_time; //CNT // Reload timer counter
   //TCCR2B = (1<<CS21); // Begin timer2. Full speed, 1/8 prescaler
-  TIM_Cmd(TIM_STEP_MOTOR_DELAY, ENABLE);
+  TIM_STEP_MOTOR_DELAY->CR1 |= TIM_CR1_CEN;//TIM_Cmd(TIM_STEP_MOTOR_DELAY, ENABLE);
+  TIM_STEP_MOTOR_DELAY->DIER |= TIM_IT_Update;//TIM_ITConfig(TIM_STEP_MOTOR_DELAY, TIM_IT_Update, ENABLE);
 
   busy = true;
   // Re-enable interrupts to allow ISR_TIMER2_OVERFLOW to trigger on-time and allow serial communications
@@ -332,11 +345,17 @@ void TIM2_IRQHandler(void)
 // added to Grbl.
 void TIM5_IRQHandler(void)//ISR(TIMER2_OVF_vect)
 {
+  static u32 step_count_=0;
+  
+  step_count_++;
+  TIM_ClearITPendingBit(TIM_STEP_MOTOR_DELAY, TIM_IT_Update);
   // Reset stepping pins (leave the direction pins)
   //STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
-  GPIO_ResetBits(STEP_PORT, (~STEP_MASK) | (settings.invert_mask & STEP_MASK)); 
+  //GPIO_ResetBits(STEP_PORT, (~STEP_MASK) | (settings.invert_mask & STEP_MASK)); 
+  STEP_PORT->BSRRH = STEP_MASK;//GPIO_ResetBits(STEP_PORT, STEP_MASK); 
   //TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed.
-  TIM_Cmd(TIM_STEP_MOTOR_DELAY, DISABLE);
+  TIM_STEP_MOTOR_DELAY->DIER &= (uint16_t)~TIM_IT_Update;//TIM_ITConfig(TIM_STEP_MOTOR_DELAY, TIM_IT_Update, DISABLE);
+  TIM_STEP_MOTOR_DELAY->CR1 &= (uint16_t)~TIM_CR1_CEN;;//TIM_Cmd(TIM_STEP_MOTOR_DELAY, DISABLE);
 }
 
 #ifdef STEP_PULSE_DELAY
@@ -403,7 +422,7 @@ void st_init(void)
 	TIM_DeInit(TIM_STEP_MOTOR);
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
 	TIM_TimeBaseStructure.TIM_Period = 1000;//(u16) (STEP_MOTOR_TIM_PERIOD - 1);
-	TIM_TimeBaseStructure.TIM_Prescaler = 0;//STEP_MOTOR_TIM_PRESCALE - 1;
+	TIM_TimeBaseStructure.TIM_Prescaler = 42-1;//STEP_MOTOR_TIM_PRESCALE - 1;
 	TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseInit(TIM_STEP_MOTOR, &TIM_TimeBaseStructure);
@@ -419,13 +438,13 @@ void st_init(void)
   // Enable the TIM2 global Interrupt 
   NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 
-TIM_DeInit(TIM_STEP_MOTOR_DELAY);
+  TIM_DeInit(TIM_STEP_MOTOR_DELAY);
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
-  TIM_TimeBaseStructure.TIM_Prescaler = 168/2/2-1;
+  TIM_TimeBaseStructure.TIM_Prescaler = 42-1;
   TIM_TimeBaseInit(TIM_STEP_MOTOR_DELAY, &TIM_TimeBaseStructure);
   TIM_SetCounter(TIM_STEP_MOTOR_DELAY, 0);
 	TIM_ARRPreloadConfig(TIM_STEP_MOTOR_DELAY, ENABLE);
@@ -435,29 +454,36 @@ TIM_DeInit(TIM_STEP_MOTOR_DELAY);
 	TIM_ClearITPendingBit(TIM_STEP_MOTOR_DELAY, TIM_IT_Update);
   
 	TIM_Cmd(TIM_STEP_MOTOR_DELAY, DISABLE);
-#ifdef STEP_PULSE_DELAY
+//#ifdef STEP_PULSE_DELAY
   // Enable the TIM2 global Interrupt 
   NVIC_InitStructure.NVIC_IRQChannel = TIM5_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
-#endif
+//#endif
   // Start in the idle state, but first wake up to check for keep steppers enabled option.
   st_wake_up();
   st_go_idle();
 }
 // Configures the prescaler and ceiling of timer 1 to produce the given rate as accurately as possible.
 // Returns the actual number of cycles per interrupt
+// 设置定时器的定时长度
 static uint32_t config_step_timer(uint32_t cycles)
 {
 	TIM_STEP_MOTOR->ARR = cycles;
+  TIM_STEP_MOTOR->ARR = cycles;
 	return(cycles);
 }
 static void set_step_events_per_minute(uint32_t steps_per_minute) 
 {
+  u32 t;
+  
   if (steps_per_minute < MINIMUM_STEPS_PER_MINUTE) { steps_per_minute = MINIMUM_STEPS_PER_MINUTE; }
-  st.cycles_per_step_event = config_step_timer((TICKS_PER_MICROSECOND*1000000*60)/steps_per_minute);
+  t = TICKS_PER_MICROSECOND;
+  t = t*1000000*60;
+  t = t/steps_per_minute;
+  st.cycles_per_step_event = config_step_timer(t);
 }
 
 // Planner external interface to start stepper interrupt and execute the blocks in queue. Called

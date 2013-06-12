@@ -94,7 +94,7 @@ void settings_reset(bool reset_all) {
   settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
   settings.decimal_places = DEFAULT_DECIMAL_PLACES;
   settings.n_arc_correction = DEFAULT_N_ARC_CORRECTION;
-  write_global_settings();
+  //write_global_settings();
 }
 
 // Reads startup line from EEPROM. Updated pointed line string data.

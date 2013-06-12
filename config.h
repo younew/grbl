@@ -25,13 +25,13 @@
 // IMPORTANT: Any changes here requires a full re-compiling of the source code to propagate them.
 
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
-#define DEFAULTS_GENERIC
+#define DEFAULTS_ZEN_TOOLWORKS_7x7 // DEFAULTS_GENERIC
 
 #define M_PI   3.1415926
 #define TRUE   1
 #define FALSE  0
 // Serial baud rate
-#define BAUD_RATE 9600
+#define BAUD_RATE 9600//19200//115200 //9600
 
 // Define pin-assignments
 //@ 定义步进电机定时器
@@ -355,7 +355,7 @@
 // As well as, older FTDI FT232RL-based Arduinos(Duemilanove) are known to work with standard
 // terminal programs since their firmware correctly manage these XON/XOFF characters. In any
 // case, please report any successes to grbl administrators!
-// #define ENABLE_XONXOFF // Default disabled. Uncomment to enable.
+//#define ENABLE_XONXOFF // Default disabled. Uncomment to enable.
 
 // Creates a delay between the direction pin setting and corresponding step pulse by creating
 // another interrupt (Timer2 compare) to manage it. The main Grbl interrupt (Timer1 compare) 

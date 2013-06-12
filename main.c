@@ -42,10 +42,11 @@
 
 // Declare system global variable structure
 system_t sys; 
-
+void RCC_init(void);
 int main(void)
 {
   // Initialize system
+  RCC_init();
   serial_init(); // Setup serial baud rate and interrupts
   settings_init(); // Load grbl settings from EEPROM
   st_init(); // Setup stepper pins and interrupt timers
@@ -106,4 +107,13 @@ int main(void)
     
   }
   return 0;   /* never reached */
+}
+void RCC_init(void)
+{
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOB 
+                       | RCC_AHB1Periph_GPIOC | RCC_AHB1Periph_GPIOD
+                       | RCC_AHB1Periph_GPIOE, ENABLE);
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_CRC, ENABLE);
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
+  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); //两级占先 八级副优先
 }
